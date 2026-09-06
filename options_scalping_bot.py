@@ -13,15 +13,15 @@ QTY = 50  # Nifty lot size
 
 # Risk Management
 MAX_LOSS_PER_DAY = -5000  # Kill switch limit (in INR)
-STOP_LOSS_PCT = 0.10      # 10% stop loss on premium
-MIN_RR_RATIO = 3.0
-TARGET_PCT = STOP_LOSS_PCT * MIN_RR_RATIO # 30% trigger for TTP
-TRAILING_TAKE_PROFIT_PCT = 0.05 # 5% trailing once target is reached
+STOP_LOSS_PCT = 0.05      # Tight 5% stop loss for hyper-scalping
+MIN_RR_RATIO = 2.0
+TARGET_PCT = STOP_LOSS_PCT * MIN_RR_RATIO # 10% trigger for TTP
+TRAILING_TAKE_PROFIT_PCT = 0.02 # 2% trailing once target is reached
 
 # Trend & Momentum Filters
-EMA_PERIOD = 50
+EMA_PERIOD = 9
 ADX_PERIOD = 14
-ADX_THRESHOLD = 25
+ADX_THRESHOLD = 10
 
 # Logging Setup
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -105,9 +105,9 @@ class ScalpingStrategy:
             return None
 
         # Assuming 'df' has columns: datetime, open, high, low, close, volume
-        # 1. Rolling 30-Minute High / Low (30 candles on 1min chart)
+        # 1. Rolling 5-Minute High / Low (5 candles on 1min chart)
         # Exclude the current live, unclosed candle (-1)
-        rolling_data = df.iloc[-31:-1]
+        rolling_data = df.iloc[-6:-1]
         rolling_high = rolling_data['high'].max()
         rolling_low = rolling_data['low'].min()
 

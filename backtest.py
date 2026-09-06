@@ -12,14 +12,15 @@ TIMEFRAME = "1min"
 QTY = 50
 
 MAX_LOSS_PER_DAY = -5000
-STOP_LOSS_PCT = 0.10
-MIN_RR_RATIO = 3.0
-TARGET_PCT = STOP_LOSS_PCT * MIN_RR_RATIO # 30% take profit target
-TRAILING_TAKE_PROFIT_PCT = 0.05 # 5% trailing once target is reached
+# High-Frequency Hyper-Scalping Risk Params
+STOP_LOSS_PCT = 0.05 # Tight 5% SL to cut bad entries instantly
+MIN_RR_RATIO = 2.0
+TARGET_PCT = STOP_LOSS_PCT * MIN_RR_RATIO # 10% take profit target
+TRAILING_TAKE_PROFIT_PCT = 0.02 # 2% tight trailing to secure volatile gains
 
-EMA_PERIOD = 50
+EMA_PERIOD = 9
 ADX_PERIOD = 14
-ADX_THRESHOLD = 25
+ADX_THRESHOLD = 10
 
 # Simplified backtest assumptions
 INITIAL_CAPITAL = 100000
@@ -76,9 +77,9 @@ class Backtester:
         df['Cum_Vol_x_Typ'] = df.groupby('Date')['Vol_x_Typ'].cumsum()
         df['VWAP'] = df['Cum_Vol_x_Typ'] / df['Cum_Vol']
 
-        # Calculate Rolling 30-Minute High/Low (30 candles on 1min chart) to filter out weak noise
+        # Calculate Rolling 5-Minute High/Low (5 candles on 1min chart) to create rapid hyper-scalp levels
         # Shift by 1 to exclude the current candle
-        ROLLING_PERIOD = 30
+        ROLLING_PERIOD = 5
         df['Rolling_High'] = df['high'].shift(1).rolling(window=ROLLING_PERIOD).max()
         df['Rolling_Low'] = df['low'].shift(1).rolling(window=ROLLING_PERIOD).min()
 
@@ -228,12 +229,12 @@ class Backtester:
                     continue
 
                 # 1. Breakout Strategy (Momentum)
-                # Bullish Breakout of 30-Min High
+                # Bullish Breakout of 5-Min High
                 if close > r_high and close > vwap and close > ema:
                     self._execute_trade(row, "CE")
                     continue
 
-                # Bearish Breakdown of 30-Min Low
+                # Bearish Breakdown of 5-Min Low
                 elif close < r_low and close < vwap and close < ema:
                     self._execute_trade(row, "PE")
                     continue
