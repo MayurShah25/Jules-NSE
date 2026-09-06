@@ -22,7 +22,14 @@ ADX_THRESHOLD = 15
 # Simplified backtest assumptions
 INITIAL_CAPITAL = 100000
 SLIPPAGE = 1.0 # fixed slippage in points
-BROKERAGE = 40 # round trip brokerage in INR per trade
+
+# Realistic NSE Options Fees (Approximate)
+BROKERAGE_PER_ORDER = 20.0
+STT_PCT = 0.00125 # 0.125% on sell side premium
+EXCHANGE_TXN_CHARGE_PCT = 0.0005 # NSE txn charge on premium
+GST_PCT = 0.18 # 18% on (brokerage + txn charge)
+SEBI_CHARGE_PCT = 0.000001 # Rs 10 per crore
+STAMP_DUTY_PCT = 0.00003 # 0.003% on buy side premium
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -86,15 +93,32 @@ class Backtester:
         self.current_sl = self.entry_price * (1 - STOP_LOSS_PCT)
         self.max_profit_seen = 0.0
 
+    def calculate_taxes_and_charges(self, entry_price, exit_price, qty):
+        """Calculates total brokerage and government taxes for a complete round trip (Buy + Sell)."""
+        buy_turnover = entry_price * qty
+        sell_turnover = exit_price * qty
+        total_turnover = buy_turnover + sell_turnover
+
+        brokerage = BROKERAGE_PER_ORDER * 2 # Buy + Sell
+        stt = sell_turnover * STT_PCT # STT is only on sell side for options
+        txn_charges = total_turnover * EXCHANGE_TXN_CHARGE_PCT
+        gst = (brokerage + txn_charges) * GST_PCT
+        sebi_charges = total_turnover * SEBI_CHARGE_PCT
+        stamp_duty = buy_turnover * STAMP_DUTY_PCT # Stamp duty only on buy side
+
+        total_charges = brokerage + stt + txn_charges + gst + sebi_charges + stamp_duty
+        return total_charges
+
     def _exit_trade(self, row, exit_price, reason):
         """Simulates exiting a trade and records the result."""
         exit_price = exit_price - (SLIPPAGE / QTY)
 
-        pnl = (exit_price - self.entry_price) * QTY
-        pnl -= BROKERAGE
+        gross_pnl = (exit_price - self.entry_price) * QTY
+        taxes = self.calculate_taxes_and_charges(self.entry_price, exit_price, QTY)
+        net_pnl = gross_pnl - taxes
 
-        self.capital += pnl
-        self.daily_pnl += pnl
+        self.capital += net_pnl
+        self.daily_pnl += net_pnl
 
         self.trades.append({
             'Entry_Time': self.entry_time,
@@ -102,7 +126,9 @@ class Backtester:
             'Type': self.position_type,
             'Entry_Price': self.entry_price,
             'Exit_Price': exit_price,
-            'PnL': pnl,
+            'Gross_PnL': gross_pnl,
+            'Taxes': taxes,
+            'Net_PnL': net_pnl,
             'Reason': reason
         })
 
@@ -212,10 +238,13 @@ class Backtester:
         logger.info(f"Net PnL:         {self.capital - INITIAL_CAPITAL:.2f}")
 
         if not df_trades.empty:
-            winning_trades = df_trades[df_trades['PnL'] > 0]
+            winning_trades = df_trades[df_trades['Net_PnL'] > 0]
+            total_taxes = df_trades['Taxes'].sum()
+            gross_pnl_sum = df_trades['Gross_PnL'].sum()
             logger.info(f"Total Trades:    {len(df_trades)}")
             logger.info(f"Win Rate:        {(len(winning_trades) / len(df_trades)) * 100:.2f}%")
-            logger.info(f"Max Drawdown / Metrics can be added here.")
+            logger.info(f"Gross PnL:       {gross_pnl_sum:.2f}")
+            logger.info(f"Total Taxes:     {total_taxes:.2f}")
         else:
             logger.info("No trades executed.")
         logger.info("====================================================\n")
