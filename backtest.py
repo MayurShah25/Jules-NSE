@@ -17,9 +17,9 @@ MIN_RR_RATIO = 3.0
 TARGET_PCT = STOP_LOSS_PCT * MIN_RR_RATIO # 30% take profit target
 TRAILING_TAKE_PROFIT_PCT = 0.05 # 5% trailing once target is reached
 
-EMA_PERIOD = 20
+EMA_PERIOD = 50
 ADX_PERIOD = 14
-ADX_THRESHOLD = 15
+ADX_THRESHOLD = 25
 
 # Simplified backtest assumptions
 INITIAL_CAPITAL = 100000
@@ -76,9 +76,9 @@ class Backtester:
         df['Cum_Vol_x_Typ'] = df.groupby('Date')['Vol_x_Typ'].cumsum()
         df['VWAP'] = df['Cum_Vol_x_Typ'] / df['Cum_Vol']
 
-        # Calculate Rolling 15-Minute High/Low (15 candles on 1min chart) to create tighter scalp levels
+        # Calculate Rolling 30-Minute High/Low (30 candles on 1min chart) to filter out weak noise
         # Shift by 1 to exclude the current candle
-        ROLLING_PERIOD = 15
+        ROLLING_PERIOD = 30
         df['Rolling_High'] = df['high'].shift(1).rolling(window=ROLLING_PERIOD).max()
         df['Rolling_Low'] = df['low'].shift(1).rolling(window=ROLLING_PERIOD).min()
 
@@ -228,12 +228,12 @@ class Backtester:
                     continue
 
                 # 1. Breakout Strategy (Momentum)
-                # Bullish Breakout of 15-Min High
+                # Bullish Breakout of 30-Min High
                 if close > r_high and close > vwap and close > ema:
                     self._execute_trade(row, "CE")
                     continue
 
-                # Bearish Breakdown of 15-Min Low
+                # Bearish Breakdown of 30-Min Low
                 elif close < r_low and close < vwap and close < ema:
                     self._execute_trade(row, "PE")
                     continue

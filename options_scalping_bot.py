@@ -19,9 +19,9 @@ TARGET_PCT = STOP_LOSS_PCT * MIN_RR_RATIO # 30% trigger for TTP
 TRAILING_TAKE_PROFIT_PCT = 0.05 # 5% trailing once target is reached
 
 # Trend & Momentum Filters
-EMA_PERIOD = 20
+EMA_PERIOD = 50
 ADX_PERIOD = 14
-ADX_THRESHOLD = 15
+ADX_THRESHOLD = 25
 
 # Logging Setup
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -105,9 +105,9 @@ class ScalpingStrategy:
             return None
 
         # Assuming 'df' has columns: datetime, open, high, low, close, volume
-        # 1. Rolling 15-Minute High / Low (15 candles on 1min chart)
+        # 1. Rolling 30-Minute High / Low (30 candles on 1min chart)
         # Exclude the current live, unclosed candle (-1)
-        rolling_data = df.iloc[-16:-1]
+        rolling_data = df.iloc[-31:-1]
         rolling_high = rolling_data['high'].max()
         rolling_low = rolling_data['low'].min()
 
