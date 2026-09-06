@@ -9,14 +9,11 @@ from datetime import datetime, timedelta
 # ==========================================
 SYMBOL = "NIFTY"
 TIMEFRAME = "1min"  # 1-minute timeframe for hyper-scalping
-QTY = 50  # Nifty lot size
+QTY = 500  # 10 Nifty lots to increase net profitability against flat fees
 
 # Risk Management
-MAX_LOSS_PER_DAY = -5000  # Kill switch limit (in INR)
-STOP_LOSS_PCT = 0.05      # Tight 5% stop loss for hyper-scalping
-MIN_RR_RATIO = 2.0
-TARGET_PCT = STOP_LOSS_PCT * MIN_RR_RATIO # 10% trigger for TTP
-TRAILING_TAKE_PROFIT_PCT = 0.02 # 2% trailing once target is reached
+MAX_LOSS_PER_DAY = -50000  # Kill switch limit scaled for 10 lots
+# Risk metrics are now calculated dynamically per trade
 
 # Trend & Momentum Filters
 EMA_PERIOD = 9
@@ -73,14 +70,14 @@ class RiskManager:
             return True
         return False
 
-    def calculate_sl(self, entry_price):
+    def calculate_sl(self, entry_price, sl_pct):
         """Calculates initial Stop Loss."""
-        sl_price = entry_price * (1 - STOP_LOSS_PCT)
+        sl_price = entry_price * (1 - sl_pct)
         return sl_price
 
-    def update_trailing_take_profit(self, current_price, current_sl, max_price_seen):
+    def update_trailing_take_profit(self, current_price, current_sl, max_price_seen, trailing_pct):
         """Calculates Trailing Take Profit (TTP) locking in gains."""
-        potential_new_sl = max_price_seen * (1 - TRAILING_TAKE_PROFIT_PCT)
+        potential_new_sl = max_price_seen * (1 - trailing_pct)
         if potential_new_sl > current_sl:
             return potential_new_sl
         return current_sl
@@ -139,8 +136,8 @@ class ScalpingStrategy:
         # Example format: NIFTY24MAY22000CE
         return f"{SYMBOL}_ATM_{opt_type}" # Simplified placeholder
 
-    def execute_trade(self, opt_type, spot_price):
-        """Executes the entry order and sets initial SL."""
+    def execute_trade(self, opt_type, spot_price, adx_value):
+        """Executes the entry order and sets dynamic initial SL."""
         strike = self.get_atm_strike(spot_price)
         self.option_symbol = self.get_option_symbol(strike, opt_type)
 
@@ -150,8 +147,20 @@ class ScalpingStrategy:
         # Fetch Entry Price (Assuming immediate fill for simplicity)
         self.entry_price = self.broker.get_ltp(self.option_symbol)
 
+        # Dynamic Risk Allocation based on trend strength
+        if adx_value >= 25:
+            self.trade_sl_pct = 0.08
+            self.trade_target_pct = 0.32
+            self.trade_trailing_pct = 0.05
+            logger.info("Strong Trend Detected. Engaging Max Profitability settings (1:4 RR).")
+        else:
+            self.trade_sl_pct = 0.05
+            self.trade_target_pct = 0.10
+            self.trade_trailing_pct = 0.02
+            logger.info("Weak Trend Detected. Engaging Tight Scalp settings (1:2 RR).")
+
         # Calculate & System Place SL
-        self.current_sl = self.risk_manager.calculate_sl(self.entry_price)
+        self.current_sl = self.risk_manager.calculate_sl(self.entry_price, self.trade_sl_pct)
         # In reality, place a Stop Loss Market (SL-M) order here with the broker
 
         self.in_position = True
@@ -185,20 +194,20 @@ class ScalpingStrategy:
 
         profit_pct = (current_opt_price - self.entry_price) / self.entry_price
 
-        # 2. Update Trailing Take Profit (1:3 RR Reached)
-        if profit_pct >= TARGET_PCT:
+        # 2. Update Trailing Take Profit (Target Reached)
+        if profit_pct >= self.trade_target_pct:
             if not self.target_reached:
-                logger.info(f"1:3 Target Reached! Activating Trailing Take Profit.")
+                logger.info(f"Target Reached! Activating Trailing Take Profit.")
                 self.target_reached = True
 
-            new_sl = self.risk_manager.update_trailing_take_profit(current_opt_price, self.current_sl, self.max_opt_price_seen)
+            new_sl = self.risk_manager.update_trailing_take_profit(current_opt_price, self.current_sl, self.max_opt_price_seen, self.trade_trailing_pct)
             if new_sl > self.current_sl:
                 logger.info(f"Trailing Take Profit updated to {new_sl}")
                 self.current_sl = new_sl
                 # In reality, modify the pending SL-M order with the broker here
 
         # 3. Update to Break Even (1:1 RR Reached)
-        elif profit_pct >= STOP_LOSS_PCT and not self.target_reached and not self.breakeven_reached:
+        elif profit_pct >= self.trade_sl_pct and not self.target_reached and not self.breakeven_reached:
             self.breakeven_reached = True
             new_sl = self.entry_price * 1.01 # Slightly above entry to cover fees
             logger.info(f"1:1 R:R Reached. Moving SL to Break Even: {new_sl}")
@@ -246,26 +255,26 @@ class ScalpingStrategy:
         # Long CE: Price breaks Rolling High AND Price is above VWAP & EMA
         if close_price > r_high and close_price > vwap and close_price > ema:
             logger.info("Bullish Breakout Detected.")
-            self.execute_trade("CE", close_price)
+            self.execute_trade("CE", close_price, adx)
             return
 
         # Long PE: Price breaks Rolling Low AND Price is below VWAP & EMA
         elif close_price < r_low and close_price < vwap and close_price < ema:
             logger.info("Bearish Breakdown Detected.")
-            self.execute_trade("PE", close_price)
+            self.execute_trade("PE", close_price, adx)
             return
 
         # 2. Mean-Reversion Strategy
         # Bullish Rejection: Wick poked below rolling low, closed above, in an uptrend
         if low_price < r_low and close_price > r_low and close_price > open_price and close_price > vwap and close_price > ema:
             logger.info("Bullish Mean-Rejection Detected.")
-            self.execute_trade("CE", close_price)
+            self.execute_trade("CE", close_price, adx)
             return
 
         # Bearish Rejection: Wick poked above rolling high, closed below, in a downtrend
         if high_price > r_high and close_price < r_high and close_price < open_price and close_price < vwap and close_price < ema:
             logger.info("Bearish Mean-Rejection Detected.")
-            self.execute_trade("PE", close_price)
+            self.execute_trade("PE", close_price, adx)
             return
 
 # ==========================================

@@ -9,14 +9,10 @@ from datetime import datetime, time
 # ==========================================
 SYMBOL = "NIFTY"
 TIMEFRAME = "1min"
-QTY = 50
+QTY = 500  # 10 Nifty Lots to overcome flat brokerage fees
 
-MAX_LOSS_PER_DAY = -5000
-# High-Frequency Hyper-Scalping Risk Params
-STOP_LOSS_PCT = 0.05 # Tight 5% SL to cut bad entries instantly
-MIN_RR_RATIO = 2.0
-TARGET_PCT = STOP_LOSS_PCT * MIN_RR_RATIO # 10% take profit target
-TRAILING_TAKE_PROFIT_PCT = 0.02 # 2% tight trailing to secure volatile gains
+MAX_LOSS_PER_DAY = -50000  # Scaled up kill switch for larger quantity
+# Dynamic Risk variables will be calculated per trade based on ADX
 
 EMA_PERIOD = 9
 ADX_PERIOD = 14
@@ -53,6 +49,11 @@ class Backtester:
         self.max_opt_price_seen = 0.0
         self.target_reached = False
         self.breakeven_reached = False
+
+        # Dynamic trade-specific risk parameters
+        self.trade_sl_pct = 0.0
+        self.trade_target_pct = 0.0
+        self.trade_trailing_pct = 0.0
 
         self.daily_pnl = 0.0
         self.kill_switch_active = False
@@ -91,11 +92,23 @@ class Backtester:
         self.position_type = opt_type
         self.underlying_entry_price = row['close']
         # Assuming ATM option price is roughly 100 for simplicity in this structural outline
-        # In a real backtest, you would need options data mapping
         self.entry_price = 100.0 + (SLIPPAGE / QTY)
         self.entry_time = row.name
 
-        self.current_sl = self.entry_price * (1 - STOP_LOSS_PCT)
+        # Dynamic Risk/Reward Understanding
+        adx_value = row[f'ADX_{ADX_PERIOD}']
+        if adx_value >= 25:
+            # Strong trend identified: Widen risk tolerance and aim for max profitability
+            self.trade_sl_pct = 0.08      # 8% Stop Loss (give it room to breathe)
+            self.trade_target_pct = 0.32  # 32% Take Profit (1:4 Risk/Reward)
+            self.trade_trailing_pct = 0.05 # 5% trailing (let winners run)
+        else:
+            # Weak/Choppy trend identified: Use tight hyper-scalping settings
+            self.trade_sl_pct = 0.05      # 5% Stop Loss (cut fast)
+            self.trade_target_pct = 0.10  # 10% Take Profit (1:2 Risk/Reward)
+            self.trade_trailing_pct = 0.02 # 2% tight trailing
+
+        self.current_sl = self.entry_price * (1 - self.trade_sl_pct)
         self.max_opt_price_seen = self.entry_price
         self.target_reached = False
         self.breakeven_reached = False
@@ -197,15 +210,15 @@ class Backtester:
 
                 profit_pct = (current_opt_price - self.entry_price) / self.entry_price
 
-                # 1. Target Reached (1:3 RR) -> Activate Trailing Take Profit
-                if profit_pct >= TARGET_PCT:
+                # 1. Target Reached -> Activate Trailing Take Profit
+                if profit_pct >= self.trade_target_pct:
                     self.target_reached = True
-                    potential_new_sl = self.max_opt_price_seen * (1 - TRAILING_TAKE_PROFIT_PCT)
+                    potential_new_sl = self.max_opt_price_seen * (1 - self.trade_trailing_pct)
                     if potential_new_sl > self.current_sl:
                         self.current_sl = potential_new_sl
 
                 # 2. Break Even (1:1 RR) -> Move SL to entry
-                elif profit_pct >= STOP_LOSS_PCT and not self.target_reached and not self.breakeven_reached:
+                elif profit_pct >= self.trade_sl_pct and not self.target_reached and not self.breakeven_reached:
                     self.breakeven_reached = True
                     # Set SL to slightly above entry to cover minimum slippage/fees
                     self.current_sl = self.entry_price * 1.01
