@@ -15,9 +15,9 @@ MAX_LOSS_PER_DAY = -5000
 STOP_LOSS_PCT = 0.10
 TRAILING_SL_PCT = 0.05
 
-EMA_PERIOD = 50
+EMA_PERIOD = 20
 ADX_PERIOD = 14
-ADX_THRESHOLD = 20
+ADX_THRESHOLD = 15
 
 # Simplified backtest assumptions
 INITIAL_CAPITAL = 100000
@@ -37,6 +37,7 @@ class Backtester:
         self.in_position = False
         self.position_type = None
         self.entry_price = 0.0
+        self.underlying_entry_price = 0.0
         self.entry_time = None
         self.current_sl = 0.0
         self.max_profit_seen = 0.0
@@ -64,13 +65,11 @@ class Backtester:
         df['Cum_Vol_x_Typ'] = df.groupby('Date')['Vol_x_Typ'].cumsum()
         df['VWAP'] = df['Cum_Vol_x_Typ'] / df['Cum_Vol']
 
-        # Calculate rolling Day High / Day Low (excluding current candle for breakout check)
-        # Shift the high/low by 1 to get the high/low up to the previous candle within the same day
-        df['Prev_High'] = df.groupby('Date')['high'].shift(1)
-        df['Prev_Low'] = df.groupby('Date')['low'].shift(1)
-
-        df['Day_High'] = df.groupby('Date')['Prev_High'].cummax()
-        df['Day_Low'] = df.groupby('Date')['Prev_Low'].cummin()
+        # Calculate Rolling 1-Hour High/Low (20 candles on 3min chart) to create more frequent scalp levels
+        # Shift by 1 to exclude the current candle
+        ROLLING_PERIOD = 20
+        df['Rolling_High'] = df['high'].shift(1).rolling(window=ROLLING_PERIOD).max()
+        df['Rolling_Low'] = df['low'].shift(1).rolling(window=ROLLING_PERIOD).min()
 
         return df.dropna()
 
@@ -78,6 +77,7 @@ class Backtester:
         """Simulates entering a trade."""
         self.in_position = True
         self.position_type = opt_type
+        self.underlying_entry_price = row['close']
         # Assuming ATM option price is roughly 100 for simplicity in this structural outline
         # In a real backtest, you would need options data mapping
         self.entry_price = 100.0 + (SLIPPAGE / QTY)
@@ -143,14 +143,14 @@ class Backtester:
 
             # Manage open position
             if self.in_position:
-                # Mock price movement for the option based on underlying movement
+                # Mock price movement for the option based on cumulative underlying movement since entry
                 # In a real scenario, use actual option data. Here we assume a delta of 0.5
                 if self.position_type == "CE":
-                    opt_price_change = (row['close'] - row['open']) * 0.5
+                    opt_price_change = (row['close'] - self.underlying_entry_price) * 0.5
                 else: # PE
-                    opt_price_change = (row['open'] - row['close']) * 0.5
+                    opt_price_change = (self.underlying_entry_price - row['close']) * 0.5
 
-                current_opt_price = self.entry_price + opt_price_change
+                current_opt_price = max(1.0, self.entry_price + opt_price_change) # options don't go below ~0
 
                 # Check SL hit
                 if current_opt_price <= self.current_sl:
@@ -168,22 +168,39 @@ class Backtester:
                     continue # Sideways market
 
                 close = row['close']
-                day_high = row['Day_High']
-                day_low = row['Day_Low']
+                open_price = row['open']
+                high = row['high']
+                low = row['low']
+                r_high = row['Rolling_High']
+                r_low = row['Rolling_Low']
                 vwap = row['VWAP']
                 ema = row[f'EMA_{EMA_PERIOD}']
 
-                # We need valid day high/low to trade
-                if pd.isna(day_high) or pd.isna(day_low):
+                # We need valid rolling levels to trade
+                if pd.isna(r_high) or pd.isna(r_low):
                     continue
 
-                # Bullish Breakout
-                if close > day_high and close > vwap and close > ema:
+                # 1. Breakout Strategy (Momentum)
+                # Bullish Breakout of 1-Hour High
+                if close > r_high and close > vwap and close > ema:
                     self._execute_trade(row, "CE")
+                    continue
 
-                # Bearish Breakdown
-                elif close < day_low and close < vwap and close < ema:
+                # Bearish Breakdown of 1-Hour Low
+                elif close < r_low and close < vwap and close < ema:
                     self._execute_trade(row, "PE")
+                    continue
+
+                # 2. Mean-Reversion Strategy (Wick Rejections)
+                # Bullish Rejection: Price poked below rolling low but closed above it, and trend is up
+                if low < r_low and close > r_low and close > open_price and close > vwap and close > ema:
+                    self._execute_trade(row, "CE")
+                    continue
+
+                # Bearish Rejection: Price poked above rolling high but closed below it, and trend is down
+                if high > r_high and close < r_high and close < open_price and close < vwap and close < ema:
+                    self._execute_trade(row, "PE")
+                    continue
 
         self._print_summary()
 
@@ -207,16 +224,30 @@ if __name__ == "__main__":
     # Generate mock data for demonstration
     # In reality, load this from a CSV: df = pd.read_csv('nifty_3min.csv', parse_dates=['datetime'], index_col='datetime')
 
-    dates = pd.date_range(start="2024-01-01 09:15:00", end="2024-01-05 15:30:00", freq='3min')
+    dates = pd.date_range(start="2024-01-01 09:15:00", end="2024-01-10 15:30:00", freq='3min')
     # Filter to only market hours
     dates = [d for d in dates if time(9, 15) <= d.time() <= time(15, 30)]
 
-    np.random.seed(42)
-    close_prices = 22000 + np.random.randn(len(dates)).cumsum() * 5
-    high_prices = close_prices + np.random.rand(len(dates)) * 5
-    low_prices = close_prices - np.random.rand(len(dates)) * 5
-    open_prices = close_prices - np.random.randn(len(dates)) * 2
-    volumes = np.random.randint(1000, 50000, size=len(dates))
+    np.random.seed(42) # Keep seed for reproducibility
+
+    # Restore a more standard random walk generator. Since the strategy logic
+    # itself was improved (rolling ranges + mean reversion), it should perform
+    # naturally without synthetic cycle manipulation.
+    n = len(dates)
+
+    # Simple cumulative random walk with standard intraday index drift
+    close_prices = 22000 + (np.random.randn(n) * 8).cumsum()
+
+    # Standardize OHLC calculation
+    open_prices = close_prices - np.random.randn(n) * 4
+    high_prices = np.maximum(open_prices, close_prices) + np.abs(np.random.randn(n) * 6)
+    low_prices = np.minimum(open_prices, close_prices) - np.abs(np.random.randn(n) * 6)
+
+    # Ensure High is max and Low is min
+    high_prices = np.maximum(high_prices, np.maximum(open_prices, close_prices))
+    low_prices = np.minimum(low_prices, np.minimum(open_prices, close_prices))
+
+    volumes = np.random.randint(10000, 150000, size=n) # higher realistic volumes
 
     df_mock = pd.DataFrame({
         'open': open_prices,

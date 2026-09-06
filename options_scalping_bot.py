@@ -17,9 +17,9 @@ STOP_LOSS_PCT = 0.10      # 10% stop loss on premium
 TRAILING_SL_PCT = 0.05    # 5% trailing SL
 
 # Trend & Momentum Filters
-EMA_PERIOD = 50
+EMA_PERIOD = 20
 ADX_PERIOD = 14
-ADX_THRESHOLD = 20
+ADX_THRESHOLD = 15
 
 # Logging Setup
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -97,23 +97,17 @@ class ScalpingStrategy:
         self.option_symbol = ""
 
     def fetch_and_calculate_indicators(self):
-        """Fetches data and calculates Day High, Day Low, VWAP, EMA, ADX."""
+        """Fetches data and calculates Rolling High/Low, VWAP, EMA, ADX."""
         df = self.broker.get_historical_data(SYMBOL, TIMEFRAME)
-        if df is None or df.empty:
+        if df is None or len(df) < 20:
             return None
 
         # Assuming 'df' has columns: datetime, open, high, low, close, volume
-        # 1. Day High / Day Low
-        # In a live scenario, you filter today's data to find the rolling Day High/Low
-        # Calculate up to the PREVIOUS candle so the current close can break it
-        today_data = df[df.index.date == datetime.today().date()]
-        if len(today_data) > 1:
-            # exclude the current candle
-            day_high = today_data['high'].iloc[:-1].max()
-            day_low = today_data['low'].iloc[:-1].min()
-        else:
-            # fallback if only one candle exists today
-            day_high, day_low = df['high'].iloc[-1], df['low'].iloc[-1]
+        # 1. Rolling 1-Hour High / Low (20 candles on 3min chart)
+        # Exclude the current live, unclosed candle (-1)
+        rolling_data = df.iloc[-21:-1]
+        rolling_high = rolling_data['high'].max()
+        rolling_low = rolling_data['low'].min()
 
         # 2. Indicators (using pandas_ta)
         df.ta.ema(length=EMA_PERIOD, append=True)
@@ -124,9 +118,12 @@ class ScalpingStrategy:
 
         return {
             'close': latest_data['close'],
-            'day_high': day_high,
-            'day_low': day_low,
-            'ema_50': latest_data[f'EMA_{EMA_PERIOD}'],
+            'open': latest_data['open'],
+            'high': latest_data['high'],
+            'low': latest_data['low'],
+            'rolling_high': rolling_high,
+            'rolling_low': rolling_low,
+            'ema': latest_data[f'EMA_{EMA_PERIOD}'],
             'adx': latest_data[f'ADX_{ADX_PERIOD}'],
             'vwap': latest_data['VWAP_D']
         }
@@ -201,9 +198,12 @@ class ScalpingStrategy:
             return
 
         close_price = market_data['close']
-        day_high = market_data['day_high']
-        day_low = market_data['day_low']
-        ema_50 = market_data['ema_50']
+        open_price = market_data['open']
+        high_price = market_data['high']
+        low_price = market_data['low']
+        r_high = market_data['rolling_high']
+        r_low = market_data['rolling_low']
+        ema = market_data['ema']
         vwap = market_data['vwap']
         adx = market_data['adx']
 
@@ -212,21 +212,37 @@ class ScalpingStrategy:
         # ==========================================
         # 1. Sideways Market Filter
         if adx < ADX_THRESHOLD:
-            logger.debug("Market is sideways (ADX < 20). No trades will be taken.")
+            logger.debug(f"Market is sideways (ADX < {ADX_THRESHOLD}). No trades will be taken.")
             return
 
         # ==========================================
         # ENTRY LOGIC
         # ==========================================
-        # Long CE: Price breaks Day High AND Price is above VWAP & EMA 50
-        if close_price > day_high and close_price > vwap and close_price > ema_50:
+        # 1. Breakout Strategy
+        # Long CE: Price breaks Rolling High AND Price is above VWAP & EMA
+        if close_price > r_high and close_price > vwap and close_price > ema:
             logger.info("Bullish Breakout Detected.")
             self.execute_trade("CE", close_price)
+            return
 
-        # Long PE: Price breaks Day Low AND Price is below VWAP & EMA 50
-        elif close_price < day_low and close_price < vwap and close_price < ema_50:
+        # Long PE: Price breaks Rolling Low AND Price is below VWAP & EMA
+        elif close_price < r_low and close_price < vwap and close_price < ema:
             logger.info("Bearish Breakdown Detected.")
             self.execute_trade("PE", close_price)
+            return
+
+        # 2. Mean-Reversion Strategy
+        # Bullish Rejection: Wick poked below rolling low, closed above, in an uptrend
+        if low_price < r_low and close_price > r_low and close_price > open_price and close_price > vwap and close_price > ema:
+            logger.info("Bullish Mean-Rejection Detected.")
+            self.execute_trade("CE", close_price)
+            return
+
+        # Bearish Rejection: Wick poked above rolling high, closed below, in a downtrend
+        if high_price > r_high and close_price < r_high and close_price < open_price and close_price < vwap and close_price < ema:
+            logger.info("Bearish Mean-Rejection Detected.")
+            self.execute_trade("PE", close_price)
+            return
 
 # ==========================================
 # MAIN EXECUTION
