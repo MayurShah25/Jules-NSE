@@ -13,7 +13,9 @@ QTY = 50
 
 MAX_LOSS_PER_DAY = -5000
 STOP_LOSS_PCT = 0.10
-TRAILING_SL_PCT = 0.05
+MIN_RR_RATIO = 3.0
+TARGET_PCT = STOP_LOSS_PCT * MIN_RR_RATIO # 30% take profit target
+TRAILING_TAKE_PROFIT_PCT = 0.05 # 5% trailing once target is reached
 
 EMA_PERIOD = 20
 ADX_PERIOD = 14
@@ -47,7 +49,9 @@ class Backtester:
         self.underlying_entry_price = 0.0
         self.entry_time = None
         self.current_sl = 0.0
-        self.max_profit_seen = 0.0
+        self.max_opt_price_seen = 0.0
+        self.target_reached = False
+        self.breakeven_reached = False
 
         self.daily_pnl = 0.0
         self.kill_switch_active = False
@@ -91,7 +95,9 @@ class Backtester:
         self.entry_time = row.name
 
         self.current_sl = self.entry_price * (1 - STOP_LOSS_PCT)
-        self.max_profit_seen = 0.0
+        self.max_opt_price_seen = self.entry_price
+        self.target_reached = False
+        self.breakeven_reached = False
 
     def calculate_taxes_and_charges(self, entry_price, exit_price, qty):
         """Calculates total brokerage and government taxes for a complete round trip (Buy + Sell)."""
@@ -178,15 +184,30 @@ class Backtester:
 
                 current_opt_price = max(1.0, self.entry_price + opt_price_change) # options don't go below ~0
 
-                # Check SL hit
+                # Track max price seen for Trailing Take Profit
+                if current_opt_price > self.max_opt_price_seen:
+                    self.max_opt_price_seen = current_opt_price
+
+                # Check SL or Trailing Take Profit hit
                 if current_opt_price <= self.current_sl:
-                    self._exit_trade(row, self.current_sl, "SL Hit")
+                    reason = "Trailing Take Profit Hit" if self.target_reached else ("Break Even Hit" if self.breakeven_reached else "SL Hit")
+                    self._exit_trade(row, self.current_sl, reason)
                     continue
 
-                # Update Trailing SL
-                potential_new_sl = current_opt_price * (1 - TRAILING_SL_PCT)
-                if potential_new_sl > self.current_sl:
-                    self.current_sl = potential_new_sl
+                profit_pct = (current_opt_price - self.entry_price) / self.entry_price
+
+                # 1. Target Reached (1:3 RR) -> Activate Trailing Take Profit
+                if profit_pct >= TARGET_PCT:
+                    self.target_reached = True
+                    potential_new_sl = self.max_opt_price_seen * (1 - TRAILING_TAKE_PROFIT_PCT)
+                    if potential_new_sl > self.current_sl:
+                        self.current_sl = potential_new_sl
+
+                # 2. Break Even (1:1 RR) -> Move SL to entry
+                elif profit_pct >= STOP_LOSS_PCT and not self.target_reached and not self.breakeven_reached:
+                    self.breakeven_reached = True
+                    # Set SL to slightly above entry to cover minimum slippage/fees
+                    self.current_sl = self.entry_price * 1.01
 
             # Look for entries if not in position
             else:

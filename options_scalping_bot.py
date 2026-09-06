@@ -14,7 +14,9 @@ QTY = 50  # Nifty lot size
 # Risk Management
 MAX_LOSS_PER_DAY = -5000  # Kill switch limit (in INR)
 STOP_LOSS_PCT = 0.10      # 10% stop loss on premium
-TRAILING_SL_PCT = 0.05    # 5% trailing SL
+MIN_RR_RATIO = 3.0
+TARGET_PCT = STOP_LOSS_PCT * MIN_RR_RATIO # 30% trigger for TTP
+TRAILING_TAKE_PROFIT_PCT = 0.05 # 5% trailing once target is reached
 
 # Trend & Momentum Filters
 EMA_PERIOD = 20
@@ -71,14 +73,14 @@ class RiskManager:
             return True
         return False
 
-    def calculate_sl_and_target(self, entry_price):
+    def calculate_sl(self, entry_price):
         """Calculates initial Stop Loss."""
         sl_price = entry_price * (1 - STOP_LOSS_PCT)
         return sl_price
 
-    def update_trailing_sl(self, current_price, current_sl):
-        """Updates trailing stop loss."""
-        potential_new_sl = current_price * (1 - TRAILING_SL_PCT)
+    def update_trailing_take_profit(self, current_price, current_sl, max_price_seen):
+        """Calculates Trailing Take Profit (TTP) locking in gains."""
+        potential_new_sl = max_price_seen * (1 - TRAILING_TAKE_PROFIT_PCT)
         if potential_new_sl > current_sl:
             return potential_new_sl
         return current_sl
@@ -149,11 +151,14 @@ class ScalpingStrategy:
         self.entry_price = self.broker.get_ltp(self.option_symbol)
 
         # Calculate & System Place SL
-        self.current_sl = self.risk_manager.calculate_sl_and_target(self.entry_price)
+        self.current_sl = self.risk_manager.calculate_sl(self.entry_price)
         # In reality, place a Stop Loss Market (SL-M) order here with the broker
 
         self.in_position = True
         self.current_position = opt_type
+        self.max_opt_price_seen = self.entry_price
+        self.target_reached = False
+        self.breakeven_reached = False
         logger.info(f"Entered {opt_type} at {self.entry_price}. Initial SL: {self.current_sl}")
 
     def exit_trade(self, reason):
@@ -166,18 +171,37 @@ class ScalpingStrategy:
         self.current_sl = 0.0
 
     def manage_open_position(self):
-        """Manages Trailing SL and Stop Loss hits."""
+        """Manages Trailing Take Profit, Breakeven SL, and Stop Loss hits."""
         current_opt_price = self.broker.get_ltp(self.option_symbol)
 
-        # 1. Check SL Hit
+        if current_opt_price > self.max_opt_price_seen:
+            self.max_opt_price_seen = current_opt_price
+
+        # 1. Check SL / TTP Hit
         if current_opt_price <= self.current_sl:
-            self.exit_trade("Stop Loss Hit")
+            reason = "Trailing Take Profit Hit" if self.target_reached else ("Break Even Hit" if self.breakeven_reached else "Stop Loss Hit")
+            self.exit_trade(reason)
             return
 
-        # 2. Update Trailing SL
-        new_sl = self.risk_manager.update_trailing_sl(current_opt_price, self.current_sl)
-        if new_sl > self.current_sl:
-            logger.info(f"Trailing SL updated from {self.current_sl} to {new_sl}")
+        profit_pct = (current_opt_price - self.entry_price) / self.entry_price
+
+        # 2. Update Trailing Take Profit (1:3 RR Reached)
+        if profit_pct >= TARGET_PCT:
+            if not self.target_reached:
+                logger.info(f"1:3 Target Reached! Activating Trailing Take Profit.")
+                self.target_reached = True
+
+            new_sl = self.risk_manager.update_trailing_take_profit(current_opt_price, self.current_sl, self.max_opt_price_seen)
+            if new_sl > self.current_sl:
+                logger.info(f"Trailing Take Profit updated to {new_sl}")
+                self.current_sl = new_sl
+                # In reality, modify the pending SL-M order with the broker here
+
+        # 3. Update to Break Even (1:1 RR Reached)
+        elif profit_pct >= STOP_LOSS_PCT and not self.target_reached and not self.breakeven_reached:
+            self.breakeven_reached = True
+            new_sl = self.entry_price * 1.01 # Slightly above entry to cover fees
+            logger.info(f"1:1 R:R Reached. Moving SL to Break Even: {new_sl}")
             self.current_sl = new_sl
             # In reality, modify the pending SL-M order with the broker here
 
