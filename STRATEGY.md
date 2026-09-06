@@ -30,7 +30,7 @@ The bot is designed to scalp options (buying CE and PE) based on key intraday le
 To prevent entering false breakouts and losing capital in choppy markets, the bot relies on specific technical indicators.
 
 ### Recommended Timeframe
-*   **3-Minute Chart:** Ideal for scalping as it filters out the extreme noise of the 1-minute chart while still providing fast enough signals for intraday momentum.
+*   **1-Minute Chart:** Ideal for high-frequency scalping, allowing the bot to catch fast momentum bursts based on tighter intraday levels.
 
 ### Trend Filter (Don't fight the trend)
 *   **Indicators:** VWAP (Volume Weighted Average Price) and 50-period EMA (Exponential Moving Average).

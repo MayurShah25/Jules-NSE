@@ -8,7 +8,7 @@ from datetime import datetime, time
 # CONFIGURATION & PARAMETERS
 # ==========================================
 SYMBOL = "NIFTY"
-TIMEFRAME = "3min"
+TIMEFRAME = "1min"
 QTY = 50
 
 MAX_LOSS_PER_DAY = -5000
@@ -72,9 +72,9 @@ class Backtester:
         df['Cum_Vol_x_Typ'] = df.groupby('Date')['Vol_x_Typ'].cumsum()
         df['VWAP'] = df['Cum_Vol_x_Typ'] / df['Cum_Vol']
 
-        # Calculate Rolling 1-Hour High/Low (20 candles on 3min chart) to create more frequent scalp levels
+        # Calculate Rolling 15-Minute High/Low (15 candles on 1min chart) to create tighter scalp levels
         # Shift by 1 to exclude the current candle
-        ROLLING_PERIOD = 20
+        ROLLING_PERIOD = 15
         df['Rolling_High'] = df['high'].shift(1).rolling(window=ROLLING_PERIOD).max()
         df['Rolling_Low'] = df['low'].shift(1).rolling(window=ROLLING_PERIOD).min()
 
@@ -207,12 +207,12 @@ class Backtester:
                     continue
 
                 # 1. Breakout Strategy (Momentum)
-                # Bullish Breakout of 1-Hour High
+                # Bullish Breakout of 15-Min High
                 if close > r_high and close > vwap and close > ema:
                     self._execute_trade(row, "CE")
                     continue
 
-                # Bearish Breakdown of 1-Hour Low
+                # Bearish Breakdown of 15-Min Low
                 elif close < r_low and close < vwap and close < ema:
                     self._execute_trade(row, "PE")
                     continue
@@ -251,9 +251,9 @@ class Backtester:
 
 if __name__ == "__main__":
     # Generate mock data for demonstration
-    # In reality, load this from a CSV: df = pd.read_csv('nifty_3min.csv', parse_dates=['datetime'], index_col='datetime')
+    # In reality, load this from a CSV: df = pd.read_csv('nifty_1min.csv', parse_dates=['datetime'], index_col='datetime')
 
-    dates = pd.date_range(start="2024-01-01 09:15:00", end="2024-01-10 15:30:00", freq='3min')
+    dates = pd.date_range(start="2024-01-01 09:15:00", end="2024-01-10 15:30:00", freq='1min')
     # Filter to only market hours
     dates = [d for d in dates if time(9, 15) <= d.time() <= time(15, 30)]
 
@@ -265,12 +265,13 @@ if __name__ == "__main__":
     n = len(dates)
 
     # Simple cumulative random walk with standard intraday index drift
-    close_prices = 22000 + (np.random.randn(n) * 8).cumsum()
+    # Tuned down the per-candle variance slightly because 1-min candles move less points per candle than 3-min
+    close_prices = 22000 + (np.random.randn(n) * 4).cumsum()
 
     # Standardize OHLC calculation
-    open_prices = close_prices - np.random.randn(n) * 4
-    high_prices = np.maximum(open_prices, close_prices) + np.abs(np.random.randn(n) * 6)
-    low_prices = np.minimum(open_prices, close_prices) - np.abs(np.random.randn(n) * 6)
+    open_prices = close_prices - np.random.randn(n) * 2
+    high_prices = np.maximum(open_prices, close_prices) + np.abs(np.random.randn(n) * 3)
+    low_prices = np.minimum(open_prices, close_prices) - np.abs(np.random.randn(n) * 3)
 
     # Ensure High is max and Low is min
     high_prices = np.maximum(high_prices, np.maximum(open_prices, close_prices))

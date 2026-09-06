@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 # CONFIGURATION & PARAMETERS
 # ==========================================
 SYMBOL = "NIFTY"
-TIMEFRAME = "3min"  # 3-minute timeframe for scalping
+TIMEFRAME = "1min"  # 1-minute timeframe for hyper-scalping
 QTY = 50  # Nifty lot size
 
 # Risk Management
@@ -103,9 +103,9 @@ class ScalpingStrategy:
             return None
 
         # Assuming 'df' has columns: datetime, open, high, low, close, volume
-        # 1. Rolling 1-Hour High / Low (20 candles on 3min chart)
+        # 1. Rolling 15-Minute High / Low (15 candles on 1min chart)
         # Exclude the current live, unclosed candle (-1)
-        rolling_data = df.iloc[-21:-1]
+        rolling_data = df.iloc[-16:-1]
         rolling_high = rolling_data['high'].max()
         rolling_low = rolling_data['low'].min()
 
