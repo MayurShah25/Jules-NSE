@@ -19,6 +19,7 @@ MAX_LOSS_PER_DAY = -50000  # Kill switch limit scaled for 10 lots
 EMA_PERIOD = 21
 ADX_PERIOD = 14
 ADX_THRESHOLD = 20
+RSI_PERIOD = 14
 
 # Mode Setup
 PAPER_TRADING = True  # Set to False ONLY when ready to risk real capital
@@ -228,16 +229,20 @@ class ScalpingStrategy:
             return None
 
         # Assuming 'df' has columns: datetime, open, high, low, close, volume
-        # 1. Rolling 15-Minute High / Low (15 candles on 1min chart)
+        # 1. Rolling 30-Minute High / Low (30 candles on 1min chart)
         # Exclude the current live, unclosed candle (-1)
-        rolling_data = df.iloc[-16:-1]
+        rolling_data = df.iloc[-31:-1]
         rolling_high = rolling_data['high'].max()
         rolling_low = rolling_data['low'].min()
 
         # 2. Indicators (using ta)
         df[f'EMA_{EMA_PERIOD}'] = ta.trend.EMAIndicator(close=df['close'], window=EMA_PERIOD).ema_indicator()
+
         adx_ind = ta.trend.ADXIndicator(high=df['high'], low=df['low'], close=df['close'], window=ADX_PERIOD)
         df[f'ADX_{ADX_PERIOD}'] = adx_ind.adx()
+        df['ADX_Slope'] = df[f'ADX_{ADX_PERIOD}'].diff()
+
+        df[f'RSI_{RSI_PERIOD}'] = ta.momentum.RSIIndicator(close=df['close'], window=RSI_PERIOD).rsi()
 
         # Simplified Intraday VWAP
         df['Typical_Price'] = (df['high'] + df['low'] + df['close']) / 3
@@ -249,7 +254,7 @@ class ScalpingStrategy:
         latest_data = df.iloc[-1]
 
         # Ensure ADX is populated (requires 28 periods to stabilize)
-        if pd.isna(latest_data[f'ADX_{ADX_PERIOD}']):
+        if pd.isna(latest_data[f'ADX_{ADX_PERIOD}']) or pd.isna(latest_data['ADX_Slope']) or pd.isna(latest_data[f'RSI_{RSI_PERIOD}']):
             return None
 
         return {
@@ -261,6 +266,8 @@ class ScalpingStrategy:
             'rolling_low': rolling_low,
             'ema': latest_data[f'EMA_{EMA_PERIOD}'],
             'adx': latest_data[f'ADX_{ADX_PERIOD}'],
+            'adx_slope': latest_data['ADX_Slope'],
+            'rsi': latest_data[f'RSI_{RSI_PERIOD}'],
             'vwap': latest_data['VWAP_D']
         }
 
@@ -376,6 +383,8 @@ class ScalpingStrategy:
         ema = market_data['ema']
         vwap = market_data['vwap']
         adx = market_data['adx']
+        adx_slope = market_data['adx_slope']
+        rsi = market_data['rsi']
 
         # ==========================================
         # FILTERS
@@ -385,31 +394,36 @@ class ScalpingStrategy:
             logger.debug(f"Market is sideways (ADX < {ADX_THRESHOLD}). No trades will be taken.")
             return
 
+        # 2. Declining Momentum Filter
+        if adx_slope <= 0:
+            logger.debug("Momentum is fading (ADX Slope <= 0). Skipping entry.")
+            return
+
         # ==========================================
         # ENTRY LOGIC
         # ==========================================
         # 1. Breakout Strategy
-        # Long CE: Price breaks Rolling High AND Price is above VWAP & EMA
-        if close_price > r_high and close_price > vwap and close_price > ema:
+        # Long CE: Price breaks Rolling High AND Price is above VWAP & EMA AND RSI > 55
+        if close_price > r_high and close_price > vwap and close_price > ema and rsi > 55:
             logger.info("Bullish Breakout Detected.")
             self.execute_trade("CE", close_price, adx)
             return
 
-        # Long PE: Price breaks Rolling Low AND Price is below VWAP & EMA
-        elif close_price < r_low and close_price < vwap and close_price < ema:
+        # Long PE: Price breaks Rolling Low AND Price is below VWAP & EMA AND RSI < 45
+        elif close_price < r_low and close_price < vwap and close_price < ema and rsi < 45:
             logger.info("Bearish Breakdown Detected.")
             self.execute_trade("PE", close_price, adx)
             return
 
         # 2. Mean-Reversion Strategy
-        # Bullish Rejection: Wick poked below rolling low, closed above, in an uptrend
-        if low_price < r_low and close_price > r_low and close_price > open_price and close_price > vwap and close_price > ema:
+        # Bullish Rejection: Wick poked below rolling low, closed above, in an uptrend, RSI > 50
+        if low_price < r_low and close_price > r_low and close_price > open_price and close_price > vwap and close_price > ema and rsi > 50:
             logger.info("Bullish Mean-Rejection Detected.")
             self.execute_trade("CE", close_price, adx)
             return
 
-        # Bearish Rejection: Wick poked above rolling high, closed below, in a downtrend
-        if high_price > r_high and close_price < r_high and close_price < open_price and close_price < vwap and close_price < ema:
+        # Bearish Rejection: Wick poked above rolling high, closed below, in a downtrend, RSI < 50
+        if high_price > r_high and close_price < r_high and close_price < open_price and close_price < vwap and close_price < ema and rsi < 50:
             logger.info("Bearish Mean-Rejection Detected.")
             self.execute_trade("PE", close_price, adx)
             return

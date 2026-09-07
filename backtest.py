@@ -17,6 +17,7 @@ MAX_LOSS_PER_DAY = -50000  # Scaled up kill switch for larger quantity
 EMA_PERIOD = 21
 ADX_PERIOD = 14
 ADX_THRESHOLD = 20
+RSI_PERIOD = 14
 
 # Simplified backtest assumptions
 INITIAL_CAPITAL = 50000
@@ -74,6 +75,10 @@ class Backtester:
         # ADX
         adx_indicator = ta.trend.ADXIndicator(high=df['high'], low=df['low'], close=df['close'], window=ADX_PERIOD)
         df[f'ADX_{ADX_PERIOD}'] = adx_indicator.adx()
+        df['ADX_Slope'] = df[f'ADX_{ADX_PERIOD}'].diff() # Positive slope means trend is accelerating
+
+        # RSI
+        df[f'RSI_{RSI_PERIOD}'] = ta.momentum.RSIIndicator(close=df['close'], window=RSI_PERIOD).rsi()
 
         # Simplified VWAP for backtesting (using typical price)
         df['Typical_Price'] = (df['high'] + df['low'] + df['close']) / 3
@@ -276,30 +281,37 @@ class Backtester:
                 r_low = row['Rolling_Low']
                 vwap = row['VWAP']
                 ema = row[f'EMA_{EMA_PERIOD}']
+                rsi = row[f'RSI_{RSI_PERIOD}']
+                adx_slope = row['ADX_Slope']
 
-                # We need valid rolling levels to trade
-                if pd.isna(r_high) or pd.isna(r_low):
+                # We need valid rolling levels and indicators to trade
+                if pd.isna(r_high) or pd.isna(r_low) or pd.isna(rsi) or pd.isna(adx_slope):
+                    continue
+
+                # Advanced Momentum Filters:
+                # ADX must be accelerating (Slope > 0) to ensure we aren't buying into a fading trend
+                if adx_slope <= 0:
                     continue
 
                 # 1. Breakout Strategy (Momentum)
-                # Bullish Breakout of 5-Min High
-                if close > r_high and close > vwap and close > ema:
+                # Bullish Breakout of 30-Min High: Price above VWAP/EMA AND RSI > 55 (Bullish control)
+                if close > r_high and close > vwap and close > ema and rsi > 55:
                     self._execute_trade(row, "CE")
                     continue
 
-                # Bearish Breakdown of 5-Min Low
-                elif close < r_low and close < vwap and close < ema:
+                # Bearish Breakdown of 30-Min Low: Price below VWAP/EMA AND RSI < 45 (Bearish control)
+                elif close < r_low and close < vwap and close < ema and rsi < 45:
                     self._execute_trade(row, "PE")
                     continue
 
                 # 2. Mean-Reversion Strategy (Wick Rejections)
-                # Bullish Rejection: Price poked below rolling low but closed above it, and trend is up
-                if low < r_low and close > r_low and close > open_price and close > vwap and close > ema:
+                # Bullish Rejection: Wick below low, closes inside range, RSI supports upside
+                if low < r_low and close > r_low and close > open_price and close > vwap and close > ema and rsi > 50:
                     self._execute_trade(row, "CE")
                     continue
 
-                # Bearish Rejection: Price poked above rolling high but closed below it, and trend is down
-                if high > r_high and close < r_high and close < open_price and close < vwap and close < ema:
+                # Bearish Rejection: Wick above high, closes inside range, RSI supports downside
+                if high > r_high and close < r_high and close < open_price and close < vwap and close < ema and rsi < 50:
                     self._execute_trade(row, "PE")
                     continue
 

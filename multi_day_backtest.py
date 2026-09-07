@@ -5,7 +5,7 @@ import backtest
 
 def run_multi_day_compounding():
     start_date_str = '2026-08-17'
-    end_date_str = '2026-08-31'
+    end_date_str = '2026-09-07'
 
     print(f"Fetching Nifty data from {start_date_str} to {end_date_str} in chunks...")
 
