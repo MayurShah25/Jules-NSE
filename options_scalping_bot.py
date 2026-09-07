@@ -20,17 +20,36 @@ EMA_PERIOD = 9
 ADX_PERIOD = 14
 ADX_THRESHOLD = 10
 
+# Mode Setup
+PAPER_TRADING = True  # Set to False ONLY when ready to risk real capital
+
 # Logging Setup
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # ==========================================
-# BROKER INTERFACE (Mocked for Structure)
+# BROKER INTERFACE (Integration Skeleton)
 # ==========================================
 class BrokerAPI:
-    """Mock interface for broker APIs like Zerodha KiteConnect, Dhan, or Fyers."""
+    """Interface for broker APIs like Zerodha KiteConnect or DhanHQ."""
     def __init__(self):
+        # ---------------------------------------------------------
+        # TODO: Replace with your actual Broker API Keys locally
+        # ---------------------------------------------------------
+        self.api_key = "YOUR_API_KEY"
+        self.api_secret = "YOUR_API_SECRET"
+
+        # Example Zerodha initialization:
+        # from kiteconnect import KiteConnect
+        # self.kite = KiteConnect(api_key=self.api_key)
+        # self.kite.set_access_token("YOUR_ACCESS_TOKEN")
+
+        # Example Dhan initialization:
+        # from dhanhq import dhanhq
+        # self.dhan = dhanhq(self.api_key, "YOUR_CLIENT_ID")
+
         self.connected = True
+        logger.info(f"Broker Initialized. Paper Trading Mode: {PAPER_TRADING}")
 
     def get_historical_data(self, symbol, timeframe):
         # Returns a pandas DataFrame with OHLCV data
@@ -41,9 +60,16 @@ class BrokerAPI:
         return 22000.0
 
     def place_order(self, symbol, side, qty, order_type="MARKET", price=0.0):
-        # Places an order and returns order_id
-        logger.info(f"Placing {side} order for {qty} of {symbol} at {order_type}")
-        return "ORDER123"
+        if PAPER_TRADING:
+            # Simulates the trade without risking capital
+            logger.warning(f"[PAPER TRADE] {side} {qty} {symbol} @ {order_type}")
+            return f"PAPER_ORDER_{int(time.time())}"
+        else:
+            # LIVE EXECUTION LOGIC GOES HERE
+            logger.info(f"Placing {side} order for {qty} of {symbol} at {order_type}")
+            # Example Zerodha:
+            # return self.kite.place_order(tradingsymbol=symbol, exchange="NFO", transaction_type=side, quantity=qty, order_type=order_type, product="MIS")
+            return "LIVE_ORDER_ID"
 
     def get_pnl(self):
         # Returns today's realized/unrealized MTM
