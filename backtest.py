@@ -14,9 +14,9 @@ QTY = 500  # 10 Nifty Lots to overcome flat brokerage fees
 MAX_LOSS_PER_DAY = -50000  # Scaled up kill switch for larger quantity
 # Dynamic Risk variables will be calculated per trade based on ADX
 
-EMA_PERIOD = 9
+EMA_PERIOD = 21
 ADX_PERIOD = 14
-ADX_THRESHOLD = 10
+ADX_THRESHOLD = 20
 
 # Simplified backtest assumptions
 INITIAL_CAPITAL = 50000
@@ -82,9 +82,9 @@ class Backtester:
         df['Cum_Vol_x_Typ'] = df.groupby('Date')['Vol_x_Typ'].cumsum()
         df['VWAP'] = df['Cum_Vol_x_Typ'] / df['Cum_Vol']
 
-        # Calculate Rolling 5-Minute High/Low (5 candles on 1min chart) to create rapid hyper-scalp levels
+        # Calculate Rolling 15-Minute High/Low (15 candles on 1min chart) to avoid fakeouts
         # Shift by 1 to exclude the current candle
-        ROLLING_PERIOD = 5
+        ROLLING_PERIOD = 15
         df['Rolling_High'] = df['high'].shift(1).rolling(window=ROLLING_PERIOD).max()
         df['Rolling_Low'] = df['low'].shift(1).rolling(window=ROLLING_PERIOD).min()
 
@@ -113,16 +113,16 @@ class Backtester:
 
         # Dynamic Risk/Reward Understanding
         adx_value = row[f'ADX_{ADX_PERIOD}']
-        if adx_value >= 25:
-            # Strong trend identified: Widen risk tolerance and aim for max profitability
+        if adx_value >= 30:
+            # Very Strong trend identified: Widen risk tolerance and aim for max profitability
             self.trade_sl_pct = 0.08      # 8% Stop Loss (give it room to breathe)
-            self.trade_target_pct = 0.32  # 32% Take Profit (1:4 Risk/Reward)
+            self.trade_target_pct = 0.30  # 30% Take Profit
             self.trade_trailing_pct = 0.05 # 5% trailing (let winners run)
         else:
-            # Weak/Choppy trend identified: Use tight hyper-scalping settings
+            # Moderate trend identified: Balanced scalping settings
             self.trade_sl_pct = 0.05      # 5% Stop Loss (cut fast)
-            self.trade_target_pct = 0.10  # 10% Take Profit (1:2 Risk/Reward)
-            self.trade_trailing_pct = 0.02 # 2% tight trailing
+            self.trade_target_pct = 0.15  # 15% Take Profit (1:3 Risk/Reward)
+            self.trade_trailing_pct = 0.03 # 3% tight trailing
 
         self.current_sl = self.entry_price * (1 - self.trade_sl_pct)
         self.max_opt_price_seen = self.entry_price

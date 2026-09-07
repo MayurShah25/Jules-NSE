@@ -16,9 +16,9 @@ MAX_LOSS_PER_DAY = -50000  # Kill switch limit scaled for 10 lots
 # Risk metrics are now calculated dynamically per trade
 
 # Trend & Momentum Filters
-EMA_PERIOD = 9
+EMA_PERIOD = 21
 ADX_PERIOD = 14
-ADX_THRESHOLD = 10
+ADX_THRESHOLD = 20
 
 # Mode Setup
 PAPER_TRADING = True  # Set to False ONLY when ready to risk real capital
@@ -228,9 +228,9 @@ class ScalpingStrategy:
             return None
 
         # Assuming 'df' has columns: datetime, open, high, low, close, volume
-        # 1. Rolling 5-Minute High / Low (5 candles on 1min chart)
+        # 1. Rolling 15-Minute High / Low (15 candles on 1min chart)
         # Exclude the current live, unclosed candle (-1)
-        rolling_data = df.iloc[-6:-1]
+        rolling_data = df.iloc[-16:-1]
         rolling_high = rolling_data['high'].max()
         rolling_low = rolling_data['low'].min()
 
@@ -285,16 +285,16 @@ class ScalpingStrategy:
         self.entry_price = self.broker.get_ltp(self.option_symbol)
 
         # Dynamic Risk Allocation based on trend strength
-        if adx_value >= 25:
+        if adx_value >= 30:
             self.trade_sl_pct = 0.08
-            self.trade_target_pct = 0.32
+            self.trade_target_pct = 0.30
             self.trade_trailing_pct = 0.05
-            logger.info("Strong Trend Detected. Engaging Max Profitability settings (1:4 RR).")
+            logger.info("Very Strong Trend Detected. Engaging Max Profitability settings.")
         else:
             self.trade_sl_pct = 0.05
-            self.trade_target_pct = 0.10
-            self.trade_trailing_pct = 0.02
-            logger.info("Weak Trend Detected. Engaging Tight Scalp settings (1:2 RR).")
+            self.trade_target_pct = 0.15
+            self.trade_trailing_pct = 0.03
+            logger.info("Moderate Trend Detected. Engaging Balanced Scalp settings.")
 
         # Calculate & System Place SL
         self.current_sl = self.risk_manager.calculate_sl(self.entry_price, self.trade_sl_pct)
