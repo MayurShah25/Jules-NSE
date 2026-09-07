@@ -3,9 +3,9 @@ import pandas as pd
 from datetime import datetime
 import backtest
 
-# Fetch Nifty 50 data for August 25th, 2026
-print("Fetching Nifty data for August 25th, 2026...")
-nifty = yf.download('^NSEI', start='2026-08-25', end='2026-08-26', interval='1m', progress=False)
+# Fetch Nifty 50 data for Sept 3rd, 2026
+print("Fetching Nifty data for Sept 3rd, 2026...")
+nifty = yf.download('^NSEI', start='2026-09-03', end='2026-09-04', interval='1m', progress=False)
 
 if nifty.empty:
     print("Market might be closed or data unavailable for this date.")

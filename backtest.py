@@ -21,6 +21,7 @@ ADX_THRESHOLD = 20
 # Simplified backtest assumptions
 INITIAL_CAPITAL = 50000
 SLIPPAGE = 1.0 # fixed slippage in points
+MAX_CAPITAL_DEPLOYMENT = 0.95 # Use 95% of available capital per trade
 
 # Realistic NSE Options Fees (Approximate)
 BROKERAGE_PER_ORDER = 20.0
@@ -34,15 +35,17 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 class Backtester:
-    def __init__(self, data: pd.DataFrame):
+    def __init__(self, data: pd.DataFrame, starting_capital=INITIAL_CAPITAL):
         self.data = data
-        self.capital = INITIAL_CAPITAL
+        self.capital = starting_capital
+        self.starting_capital = starting_capital
         self.trades = []
 
         # Current state
         self.in_position = False
         self.position_type = None
         self.option_symbol = ""
+        self.current_qty = 0
         self.entry_price = 0.0
         self.underlying_entry_price = 0.0
         self.entry_time = None
@@ -105,10 +108,17 @@ class Backtester:
         self.option_symbol = f"{SYMBOL}{int(strike)}{opt_type}"
 
         # Simulate realistic ATM option premium based on index value (roughly 0.5% of index)
-        # E.g., Nifty at 24000 * 0.005 = ~120 premium
         simulated_atm_premium = self.underlying_entry_price * 0.005
-
         self.entry_price = simulated_atm_premium + SLIPPAGE # Slippage applies per unit of option premium
+
+        # Dynamic Compounding: Calculate max lots we can buy with 95% of current capital
+        max_investment = self.capital * MAX_CAPITAL_DEPLOYMENT
+        # Nifty lot size is 50. Floor division to get number of full lots
+        num_lots = int(max_investment / (self.entry_price * 50))
+        # Ensure we always buy at least 1 lot if we have any capital
+        num_lots = max(1, num_lots)
+        self.current_qty = num_lots * 50
+
         self.entry_time = row.name
 
         # Dynamic Risk/Reward Understanding
@@ -149,8 +159,8 @@ class Backtester:
         """Simulates exiting a trade and records the result."""
         exit_price = exit_price - SLIPPAGE # Slippage applies per unit of option premium
 
-        gross_pnl = (exit_price - self.entry_price) * QTY
-        taxes = self.calculate_taxes_and_charges(self.entry_price, exit_price, QTY)
+        gross_pnl = (exit_price - self.entry_price) * self.current_qty
+        taxes = self.calculate_taxes_and_charges(self.entry_price, exit_price, self.current_qty)
         net_pnl = gross_pnl - taxes
 
         self.capital += net_pnl
@@ -161,6 +171,7 @@ class Backtester:
             'Exit_Time': row.name,
             'Type': self.position_type,
             'Symbol': self.option_symbol,
+            'Qty': self.current_qty,
             'Entry_Price': self.entry_price,
             'Exit_Price': exit_price,
             'Gross_PnL': gross_pnl,
@@ -171,6 +182,7 @@ class Backtester:
 
         self.in_position = False
         self.position_type = None
+        self.current_qty = 0
 
     def run(self):
         """Iterates through the data to simulate trading."""
@@ -296,9 +308,9 @@ class Backtester:
     def _print_summary(self):
         df_trades = pd.DataFrame(self.trades)
         logger.info("\n================= BACKTEST SUMMARY =================")
-        logger.info(f"Initial Capital: {INITIAL_CAPITAL}")
+        logger.info(f"Initial Capital: {self.starting_capital:.2f}")
         logger.info(f"Final Capital:   {self.capital:.2f}")
-        logger.info(f"Net PnL:         {self.capital - INITIAL_CAPITAL:.2f}")
+        logger.info(f"Net PnL:         {self.capital - self.starting_capital:.2f}")
 
         if not df_trades.empty:
             logger.info("\n--- DETAILED TRADE LOG ---")
@@ -306,7 +318,7 @@ class Backtester:
                 entry_time_str = trade['Entry_Time'].strftime("%Y-%m-%d %H:%M")
                 exit_time_str = trade['Exit_Time'].strftime("%Y-%m-%d %H:%M")
 
-                logger.info(f"Trade #{idx+1}: {trade['Symbol']} | "
+                logger.info(f"Trade #{idx+1}: {trade['Symbol']} (Qty: {trade['Qty']}) | "
                             f"Entry: {entry_time_str} @ ₹{trade['Entry_Price']:.2f} | "
                             f"Exit: {exit_time_str} @ ₹{trade['Exit_Price']:.2f} | "
                             f"Reason: {trade['Reason']} | "
