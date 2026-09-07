@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 # BROKER INTERFACE (DhanHQ Integration)
 # ==========================================
 try:
-    from dhanhq import dhanhq
+    from dhanhq import dhanhq, DhanContext
 except ImportError:
     logger.error("dhanhq library not found. Run: pip install dhanhq")
 
@@ -46,7 +46,10 @@ class BrokerAPI:
         self.access_token = "YOUR_DHAN_ACCESS_TOKEN"
 
         try:
-            self.dhan = dhanhq(self.client_id, self.access_token)
+            # The newest Dhan SDK requires a DhanContext to be initialized first
+            self.dhan_context = DhanContext(self.client_id, self.access_token)
+            self.dhan = dhanhq(self.dhan_context)
+
             self.connected = True
             logger.info(f"Dhan Broker Initialized. Paper Trading Mode: {PAPER_TRADING}")
         except Exception as e:
@@ -69,10 +72,14 @@ class BrokerAPI:
             tf_map = {"1min": "1", "5min": "5", "15min": "15"}
             dhan_tf = tf_map.get(timeframe, "1")
 
+            today_str = datetime.now().strftime("%Y-%m-%d")
+
             response = self.dhan.intraday_minute_data(
                 security_id=security_id,
                 exchange_segment=exchange_segment,
-                instrument_type="INDEX"
+                instrument_type="INDEX",
+                from_date=today_str,
+                to_date=today_str
             )
 
             if response.get('status') == 'success':
