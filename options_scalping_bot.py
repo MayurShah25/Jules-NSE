@@ -248,6 +248,10 @@ class ScalpingStrategy:
 
         latest_data = df.iloc[-1]
 
+        # Ensure ADX is populated (requires 28 periods to stabilize)
+        if pd.isna(latest_data[f'ADX_{ADX_PERIOD}']):
+            return None
+
         return {
             'close': latest_data['close'],
             'open': latest_data['open'],

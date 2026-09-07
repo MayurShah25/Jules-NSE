@@ -95,7 +95,7 @@ class Backtester:
         self.position_type = opt_type
         self.underlying_entry_price = row['close']
         # Assuming ATM option price is roughly 100 for simplicity in this structural outline
-        self.entry_price = 100.0 + (SLIPPAGE / QTY)
+        self.entry_price = 100.0 + SLIPPAGE # Slippage applies per unit of option premium
         self.entry_time = row.name
 
         # Dynamic Risk/Reward Understanding
@@ -134,7 +134,7 @@ class Backtester:
 
     def _exit_trade(self, row, exit_price, reason):
         """Simulates exiting a trade and records the result."""
-        exit_price = exit_price - (SLIPPAGE / QTY)
+        exit_price = exit_price - SLIPPAGE # Slippage applies per unit of option premium
 
         gross_pnl = (exit_price - self.entry_price) * QTY
         taxes = self.calculate_taxes_and_charges(self.entry_price, exit_price, QTY)
@@ -287,6 +287,18 @@ class Backtester:
         logger.info(f"Net PnL:         {self.capital - INITIAL_CAPITAL:.2f}")
 
         if not df_trades.empty:
+            logger.info("\n--- DETAILED TRADE LOG ---")
+            for idx, trade in df_trades.iterrows():
+                entry_time_str = trade['Entry_Time'].strftime("%Y-%m-%d %H:%M")
+                exit_time_str = trade['Exit_Time'].strftime("%Y-%m-%d %H:%M")
+
+                logger.info(f"Trade #{idx+1}: {trade['Type']} | "
+                            f"Entry: {entry_time_str} @ ₹{trade['Entry_Price']:.2f} | "
+                            f"Exit: {exit_time_str} @ ₹{trade['Exit_Price']:.2f} | "
+                            f"Reason: {trade['Reason']} | "
+                            f"Net PnL: ₹{trade['Net_PnL']:.2f}")
+            logger.info("--------------------------\n")
+
             winning_trades = df_trades[df_trades['Net_PnL'] > 0]
             total_taxes = df_trades['Taxes'].sum()
             gross_pnl_sum = df_trades['Gross_PnL'].sum()
