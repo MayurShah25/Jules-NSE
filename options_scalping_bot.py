@@ -1,7 +1,7 @@
 import time
 import logging
 import pandas as pd
-import pandas_ta as ta
+import ta
 from datetime import datetime, timedelta
 
 # ==========================================
@@ -227,10 +227,17 @@ class ScalpingStrategy:
         rolling_high = rolling_data['high'].max()
         rolling_low = rolling_data['low'].min()
 
-        # 2. Indicators (using pandas_ta)
-        df.ta.ema(length=EMA_PERIOD, append=True)
-        df.ta.adx(length=ADX_PERIOD, append=True)
-        df.ta.vwap(append=True)
+        # 2. Indicators (using ta)
+        df[f'EMA_{EMA_PERIOD}'] = ta.trend.EMAIndicator(close=df['close'], window=EMA_PERIOD).ema_indicator()
+        adx_ind = ta.trend.ADXIndicator(high=df['high'], low=df['low'], close=df['close'], window=ADX_PERIOD)
+        df[f'ADX_{ADX_PERIOD}'] = adx_ind.adx()
+
+        # Simplified Intraday VWAP
+        df['Typical_Price'] = (df['high'] + df['low'] + df['close']) / 3
+        df['Vol_x_Typ'] = df['volume'] * df['Typical_Price']
+        df['Cum_Vol'] = df['volume'].cumsum()
+        df['Cum_Vol_x_Typ'] = df['Vol_x_Typ'].cumsum()
+        df['VWAP_D'] = df['Cum_Vol_x_Typ'] / df['Cum_Vol']
 
         latest_data = df.iloc[-1]
 

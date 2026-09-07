@@ -1,7 +1,7 @@
 import logging
 import pandas as pd
-import pandas_ta as ta
 import numpy as np
+import ta
 from datetime import datetime, time
 
 # ==========================================
@@ -64,9 +64,12 @@ class Backtester:
         logger.info("Calculating indicators...")
         df = self.data.copy()
 
-        # EMA, ADX, VWAP
-        df.ta.ema(length=EMA_PERIOD, append=True)
-        df.ta.adx(length=ADX_PERIOD, append=True)
+        # EMA
+        df[f'EMA_{EMA_PERIOD}'] = ta.trend.EMAIndicator(close=df['close'], window=EMA_PERIOD).ema_indicator()
+
+        # ADX
+        adx_indicator = ta.trend.ADXIndicator(high=df['high'], low=df['low'], close=df['close'], window=ADX_PERIOD)
+        df[f'ADX_{ADX_PERIOD}'] = adx_indicator.adx()
 
         # Simplified VWAP for backtesting (using typical price)
         df['Typical_Price'] = (df['high'] + df['low'] + df['close']) / 3

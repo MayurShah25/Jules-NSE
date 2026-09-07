@@ -9,7 +9,7 @@ To run this bot locally, you need Python installed on your machine.
 1. Open your terminal or command prompt.
 2. Install the required data handling and technical analysis libraries:
    ```bash
-   pip install pandas numpy pandas-ta
+   pip install pandas numpy ta
    ```
 
 ## 2. Broker SDK Installation
