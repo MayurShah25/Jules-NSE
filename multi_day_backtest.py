@@ -4,16 +4,34 @@ from datetime import datetime, timedelta
 import backtest
 
 def run_multi_day_compounding():
-    start_date_str = '2026-09-01'
-    end_date_str = '2026-09-07'
+    start_date_str = '2026-08-17'
+    end_date_str = '2026-08-31'
 
-    print(f"Fetching Nifty data from {start_date_str} to {end_date_str}...")
-    # Fetch all data at once
-    nifty = yf.download('^NSEI', start=start_date_str, end='2026-09-08', interval='1m', progress=False)
+    print(f"Fetching Nifty data from {start_date_str} to {end_date_str} in chunks...")
 
-    if nifty.empty:
+    # yfinance only allows 7 days of 1-minute data per request, so we must fetch it in chunks
+    df_list = []
+
+    start_dt = datetime.strptime(start_date_str, "%Y-%m-%d")
+    # yfinance requires end_date + 1 to include the final day in the download
+    end_dt = datetime.strptime(end_date_str, "%Y-%m-%d") + timedelta(days=1)
+
+    current_dt = start_dt
+    while current_dt < end_dt:
+        chunk_end = min(current_dt + timedelta(days=7), end_dt)
+        print(f"Downloading chunk: {current_dt.strftime('%Y-%m-%d')} to {chunk_end.strftime('%Y-%m-%d')}...")
+        chunk = yf.download('^NSEI', start=current_dt.strftime('%Y-%m-%d'), end=chunk_end.strftime('%Y-%m-%d'), interval='1m', progress=False)
+        if not chunk.empty:
+            df_list.append(chunk)
+        current_dt = chunk_end
+
+    if not df_list:
         print("Failed to download data.")
         return
+
+    nifty = pd.concat(df_list)
+    # yfinance sometimes returns duplicates when chunking
+    nifty = nifty[~nifty.index.duplicated(keep='first')]
 
     if isinstance(nifty.columns, pd.MultiIndex):
         nifty.columns = nifty.columns.droplevel(1)
@@ -39,8 +57,8 @@ def run_multi_day_compounding():
     unique_dates = pd.Series(nifty.index.date).unique()
 
     for date in unique_dates:
-        # Stop at the 7th
-        if date > datetime.strptime('2026-09-07', '%Y-%m-%d').date():
+        # Stop at the end_date
+        if date > datetime.strptime(end_date_str, '%Y-%m-%d').date():
             break
 
         print(f"\n{'='*50}")
