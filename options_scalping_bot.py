@@ -394,23 +394,18 @@ class ScalpingStrategy:
             logger.debug(f"Market is sideways (ADX < {ADX_THRESHOLD}). No trades will be taken.")
             return
 
-        # 2. Declining Momentum Filter
-        if adx_slope <= 0:
-            logger.debug("Momentum is fading (ADX Slope <= 0). Skipping entry.")
-            return
-
         # ==========================================
         # ENTRY LOGIC
         # ==========================================
         # 1. Breakout Strategy
-        # Long CE: Price breaks Rolling High AND Price is above VWAP & EMA AND RSI > 55
-        if close_price > r_high and close_price > vwap and close_price > ema and rsi > 55:
+        # Long CE: Price breaks Rolling High AND Price is above VWAP & EMA AND RSI > 50
+        if close_price > r_high and close_price > vwap and close_price > ema and rsi > 50:
             logger.info("Bullish Breakout Detected.")
             self.execute_trade("CE", close_price, adx)
             return
 
-        # Long PE: Price breaks Rolling Low AND Price is below VWAP & EMA AND RSI < 45
-        elif close_price < r_low and close_price < vwap and close_price < ema and rsi < 45:
+        # Long PE: Price breaks Rolling Low AND Price is below VWAP & EMA AND RSI < 50
+        elif close_price < r_low and close_price < vwap and close_price < ema and rsi < 50:
             logger.info("Bearish Breakdown Detected.")
             self.execute_trade("PE", close_price, adx)
             return

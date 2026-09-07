@@ -112,16 +112,24 @@ class Backtester:
         strike = self.get_atm_strike(self.underlying_entry_price)
         self.option_symbol = f"{SYMBOL}{int(strike)}{opt_type}"
 
-        # Simulate realistic ATM option premium based on index value (roughly 0.5% of index)
-        simulated_atm_premium = self.underlying_entry_price * 0.005
+        # Simulate highly dynamic ATM option premium.
+        # Base is ~0.5% of the index, but we inject a random intraday implied volatility multiplier
+        # between 0.8x and 1.5x so the premiums are truly dynamic (e.g. ₹96 to ₹180) and not stuck in a single range
+        iv_multiplier = np.random.uniform(0.8, 1.5)
+        simulated_atm_premium = (self.underlying_entry_price * 0.005) * iv_multiplier
         self.entry_price = simulated_atm_premium + SLIPPAGE # Slippage applies per unit of option premium
 
         # Dynamic Compounding: Calculate max lots we can buy with 95% of current capital
         max_investment = self.capital * MAX_CAPITAL_DEPLOYMENT
         # Nifty lot size is 50. Floor division to get number of full lots
         num_lots = int(max_investment / (self.entry_price * 50))
-        # Ensure we always buy at least 1 lot if we have any capital
+
+        # User requested max 10 lots per trade limit to prevent overexposure
+        MAX_LOTS_PER_ORDER = 10
+
         num_lots = max(1, num_lots)
+        num_lots = min(num_lots, MAX_LOTS_PER_ORDER) # Cap at max allowed quantity
+
         self.current_qty = num_lots * 50
 
         self.entry_time = row.name
@@ -288,19 +296,14 @@ class Backtester:
                 if pd.isna(r_high) or pd.isna(r_low) or pd.isna(rsi) or pd.isna(adx_slope):
                     continue
 
-                # Advanced Momentum Filters:
-                # ADX must be accelerating (Slope > 0) to ensure we aren't buying into a fading trend
-                if adx_slope <= 0:
-                    continue
-
                 # 1. Breakout Strategy (Momentum)
-                # Bullish Breakout of 30-Min High: Price above VWAP/EMA AND RSI > 55 (Bullish control)
-                if close > r_high and close > vwap and close > ema and rsi > 55:
+                # Bullish Breakout of 30-Min High: Price above VWAP/EMA AND RSI > 50 (Bullish control)
+                if close > r_high and close > vwap and close > ema and rsi > 50:
                     self._execute_trade(row, "CE")
                     continue
 
-                # Bearish Breakdown of 30-Min Low: Price below VWAP/EMA AND RSI < 45 (Bearish control)
-                elif close < r_low and close < vwap and close < ema and rsi < 45:
+                # Bearish Breakdown of 30-Min Low: Price below VWAP/EMA AND RSI < 50 (Bearish control)
+                elif close < r_low and close < vwap and close < ema and rsi < 50:
                     self._execute_trade(row, "PE")
                     continue
 
