@@ -7,19 +7,13 @@ An automated Options Buying Bot for the Indian Stock Market (Nifty/BankNifty). I
 To run this bot locally, you need Python installed on your machine.
 
 1. Open your terminal or command prompt.
-2. Install the required data handling and technical analysis libraries:
+2. Install the required data handling, technical analysis, and broker libraries:
    ```bash
-   pip install pandas numpy ta
+   pip install pandas numpy ta dhanhq
    ```
+   *(Note: Do NOT install `pandas-ta` as it is incompatible with newer versions of Python. We use the pure Python `ta` library instead.)*
 
-## 2. Broker SDK Installation
-
-To connect the bot to live market data, you must install the official Python SDK for your chosen broker.
-
-*   **For Zerodha:** `pip install kiteconnect`
-*   **For Dhan:** `pip install dhanhq`
-
-## 3. Configuring the Bot (`options_scalping_bot.py`)
+## 2. Configuring the Bot (`options_scalping_bot.py`)
 
 Open `options_scalping_bot.py` in your code editor and look at the `BrokerAPI` class near the top.
 
@@ -29,7 +23,7 @@ Open `options_scalping_bot.py` in your code editor and look at the `BrokerAPI` c
 2.  **Uncomment the SDK Code:** In the `BrokerAPI.__init__` method, uncomment the lines specific to your broker to initialize the connection.
 3.  **Implement Data Fetching:** You will need to replace the `pass` in `get_historical_data` and the hardcoded return in `get_ltp` with the actual API calls for your broker (e.g., `self.kite.quote(symbol)`).
 
-## 4. How to Run
+## 3. How to Run
 
 ### Run the Backtester (Historical Data Simulation)
 The backtester includes built-in mock data generation so you can run it immediately without API keys to see how the mathematical logic and Indian broker fee structures work.
