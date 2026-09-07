@@ -19,7 +19,7 @@ ADX_PERIOD = 14
 ADX_THRESHOLD = 10
 
 # Simplified backtest assumptions
-INITIAL_CAPITAL = 100000
+INITIAL_CAPITAL = 50000
 SLIPPAGE = 1.0 # fixed slippage in points
 
 # Realistic NSE Options Fees (Approximate)
@@ -42,6 +42,7 @@ class Backtester:
         # Current state
         self.in_position = False
         self.position_type = None
+        self.option_symbol = ""
         self.entry_price = 0.0
         self.underlying_entry_price = 0.0
         self.entry_time = None
@@ -89,11 +90,20 @@ class Backtester:
 
         return df.dropna()
 
+    def get_atm_strike(self, spot_price):
+        """Calculates At-The-Money (ATM) strike (Nifty multiples of 50)."""
+        return round(spot_price / 50) * 50
+
     def _execute_trade(self, row, opt_type):
         """Simulates entering a trade."""
         self.in_position = True
         self.position_type = opt_type
         self.underlying_entry_price = row['close']
+
+        # Calculate Option Chain specific symbol
+        strike = self.get_atm_strike(self.underlying_entry_price)
+        self.option_symbol = f"{SYMBOL}{int(strike)}{opt_type}"
+
         # Assuming ATM option price is roughly 100 for simplicity in this structural outline
         self.entry_price = 100.0 + SLIPPAGE # Slippage applies per unit of option premium
         self.entry_time = row.name
@@ -147,6 +157,7 @@ class Backtester:
             'Entry_Time': self.entry_time,
             'Exit_Time': row.name,
             'Type': self.position_type,
+            'Symbol': self.option_symbol,
             'Entry_Price': self.entry_price,
             'Exit_Price': exit_price,
             'Gross_PnL': gross_pnl,
@@ -292,7 +303,7 @@ class Backtester:
                 entry_time_str = trade['Entry_Time'].strftime("%Y-%m-%d %H:%M")
                 exit_time_str = trade['Exit_Time'].strftime("%Y-%m-%d %H:%M")
 
-                logger.info(f"Trade #{idx+1}: {trade['Type']} | "
+                logger.info(f"Trade #{idx+1}: {trade['Symbol']} | "
                             f"Entry: {entry_time_str} @ ₹{trade['Entry_Price']:.2f} | "
                             f"Exit: {exit_time_str} @ ₹{trade['Exit_Price']:.2f} | "
                             f"Reason: {trade['Reason']} | "
