@@ -104,8 +104,11 @@ class Backtester:
         strike = self.get_atm_strike(self.underlying_entry_price)
         self.option_symbol = f"{SYMBOL}{int(strike)}{opt_type}"
 
-        # Assuming ATM option price is roughly 100 for simplicity in this structural outline
-        self.entry_price = 100.0 + SLIPPAGE # Slippage applies per unit of option premium
+        # Simulate realistic ATM option premium based on index value (roughly 0.5% of index)
+        # E.g., Nifty at 24000 * 0.005 = ~120 premium
+        simulated_atm_premium = self.underlying_entry_price * 0.005
+
+        self.entry_price = simulated_atm_premium + SLIPPAGE # Slippage applies per unit of option premium
         self.entry_time = row.name
 
         # Dynamic Risk/Reward Understanding

@@ -9,7 +9,7 @@ To run this bot locally, you need Python installed on your machine.
 1. Open your terminal or command prompt.
 2. Install the required data handling, technical analysis, and broker libraries:
    ```bash
-   pip install pandas numpy ta dhanhq
+   pip install pandas numpy ta dhanhq yfinance
    ```
    *(Note: Do NOT install `pandas-ta` as it is incompatible with newer versions of Python. We use the pure Python `ta` library instead.)*
 
