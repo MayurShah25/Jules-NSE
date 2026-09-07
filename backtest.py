@@ -170,11 +170,22 @@ class Backtester:
                 self.daily_pnl = 0.0
                 self.kill_switch_active = False
 
-            # Market Hours check (09:15 to 15:30)
-            if not (time(9, 15) <= current_time <= time(15, 30)):
+            # Intraday Market Hours (09:15 to 15:15)
+            # Brokers enforce MIS square-off around 3:15 PM - 3:20 PM. We use 15:15 to prevent overnight holds.
+            if current_time >= time(15, 15):
                 if self.in_position:
-                    # Intraday square off
-                    self._exit_trade(row, self.entry_price, "EOD Square Off") # Using entry price as mock exit price for structural simplicity
+                    # Calculate current mocked option price based on underlying delta
+                    if self.position_type == "CE":
+                        opt_price_change = (row['close'] - self.underlying_entry_price) * 0.5
+                    else: # PE
+                        opt_price_change = (self.underlying_entry_price - row['close']) * 0.5
+                    current_opt_price = max(1.0, self.entry_price + opt_price_change)
+
+                    self._exit_trade(row, current_opt_price, "MIS Auto Square Off (15:15)")
+                continue
+
+            # Do not process pre-market data
+            if current_time < time(9, 15):
                 continue
 
             # Kill switch check

@@ -289,16 +289,29 @@ if __name__ == "__main__":
     try:
         while True:
             now = datetime.now().time()
-            # Indian Market Hours check (09:15 AM to 03:30 PM)
-            if datetime.strptime("09:15", "%H:%M").time() <= now <= datetime.strptime("15:30", "%H:%M").time():
+
+            # Intraday MIS strict timings (09:15 AM to 03:15 PM)
+            # We halt entries and square off everything by 15:15 to prevent overnight theta decay gaps
+            start_time = datetime.strptime("09:15", "%H:%M").time()
+            mis_square_off_time = datetime.strptime("15:15", "%H:%M").time()
+
+            if start_time <= now < mis_square_off_time:
                 bot.run_cycle()
-            else:
-                logger.info("Market Closed.")
+
+            elif now >= mis_square_off_time:
+                if bot.in_position:
+                    logger.warning("MIS Square Off Time Reached (15:15). Closing all open intraday positions!")
+                    bot.exit_trade("MIS Auto Square Off (15:15)")
+
+                logger.info("Market is beyond intraday trading hours. Bot is idling.")
+                # If market is fully closed, exit loop
                 if now > datetime.strptime("15:30", "%H:%M").time():
+                    logger.info("Market Closed for the day. Exiting.")
                     break
 
-            # Wait for next cycle (e.g., check every 1 second or based on websocket stream)
+            # Wait for next cycle
             time.sleep(1)
+
     except KeyboardInterrupt:
         logger.info("Bot stopped manually.")
         if bot.in_position:
