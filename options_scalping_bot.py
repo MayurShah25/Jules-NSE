@@ -377,17 +377,6 @@ class ScalpingStrategy:
         if not market_data:
             return
 
-        # --- Heartbeat Logging ---
-        # Print a status update every 5 minutes so the user knows the bot is scanning
-        now = datetime.now()
-        if (now - self.last_heartbeat_time).total_seconds() >= 300: # 300 seconds = 5 mins
-            adx_val = market_data['adx']
-            rsi_val = market_data['rsi']
-            close_val = market_data['close']
-            logger.info(f"[HEARTBEAT] Scanning... NIFTY LTP: {close_val:.2f} | ADX: {adx_val:.2f} | RSI: {rsi_val:.2f}")
-            self.last_heartbeat_time = now
-        # -------------------------
-
         close_price = market_data['close']
         open_price = market_data['open']
         high_price = market_data['high']
