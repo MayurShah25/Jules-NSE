@@ -390,41 +390,65 @@ class ScalpingStrategy:
         rsi = market_data['rsi']
 
         # ==========================================
-        # FILTERS
+        # FILTERS & ENTRY LOGIC
         # ==========================================
+        current_reason = "Waiting for setup."
+
+        # Chop Killer: Ensure price is expanding away from VWAP
+        vwap_distance_pct = abs(close_price - vwap) / vwap
+
         # 1. Sideways Market Filter
         if adx < ADX_THRESHOLD:
-            logger.debug(f"Market is sideways (ADX < {ADX_THRESHOLD}). No trades will be taken.")
-            return
+            current_reason = f"Sideways Market (ADX {adx:.2f} < {ADX_THRESHOLD})"
 
-        # ==========================================
-        # ENTRY LOGIC
-        # ==========================================
-        # 1. Breakout Strategy
-        # Long CE: Price breaks Rolling High AND Price is above VWAP & EMA AND RSI > 50
-        if close_price > r_high and close_price > vwap and close_price > ema and rsi > 50:
-            logger.info("Bullish Breakout Detected.")
-            self.execute_trade("CE", close_price, adx)
-            return
+        elif vwap_distance_pct <= 0.0005:
+            current_reason = f"Price too close to VWAP (Chop Zone)"
 
-        # Long PE: Price breaks Rolling Low AND Price is below VWAP & EMA AND RSI < 50
-        elif close_price < r_low and close_price < vwap and close_price < ema and rsi < 50:
-            logger.info("Bearish Breakdown Detected.")
-            self.execute_trade("PE", close_price, adx)
-            return
+        else:
+            # 1. Breakout Strategy
+            # Long CE: Price breaks Rolling High AND Price is expanding above VWAP/EMA AND RSI > 50
+            if close_price > r_high and close_price > vwap and close_price > ema and rsi > 50:
+                logger.info("Bullish Breakout Detected.")
+                self.execute_trade("CE", close_price, adx)
+                return
 
-        # 2. Mean-Reversion Strategy
-        # Bullish Rejection: Wick poked below rolling low, closed above, in an uptrend, RSI > 50
-        if low_price < r_low and close_price > r_low and close_price > open_price and close_price > vwap and close_price > ema and rsi > 50:
-            logger.info("Bullish Mean-Rejection Detected.")
-            self.execute_trade("CE", close_price, adx)
-            return
+            # Long PE: Price breaks Rolling Low AND Price is expanding below VWAP/EMA AND RSI < 50
+            elif close_price < r_low and close_price < vwap and close_price < ema and rsi < 50:
+                logger.info("Bearish Breakdown Detected.")
+                self.execute_trade("PE", close_price, adx)
+                return
 
-        # Bearish Rejection: Wick poked above rolling high, closed below, in a downtrend, RSI < 50
-        if high_price > r_high and close_price < r_high and close_price < open_price and close_price < vwap and close_price < ema and rsi < 50:
-            logger.info("Bearish Mean-Rejection Detected.")
-            self.execute_trade("PE", close_price, adx)
-            return
+            # 2. Mean-Reversion Strategy
+            # Bullish Rejection: Wick poked below rolling low, closed above, in an uptrend, RSI > 50
+            elif low_price < r_low and close_price > r_low and close_price > open_price and close_price > vwap and close_price > ema and rsi > 50:
+                logger.info("Bullish Mean-Rejection Detected.")
+                self.execute_trade("CE", close_price, adx)
+                return
+
+            # Bearish Rejection: Wick poked above rolling high, closed below, in a downtrend, RSI < 50
+            elif high_price > r_high and close_price < r_high and close_price < open_price and close_price < vwap and close_price < ema and rsi < 50:
+                logger.info("Bearish Mean-Rejection Detected.")
+                self.execute_trade("PE", close_price, adx)
+                return
+
+            else:
+                if close_price <= r_high and close_price >= r_low:
+                    current_reason = "Price is trapped inside 30-min Rolling Range"
+                elif rsi <= 50 and close_price > vwap:
+                    current_reason = "Price is bullish, but RSI < 50 does not confirm momentum"
+                elif rsi >= 50 and close_price < vwap:
+                    current_reason = "Price is bearish, but RSI > 50 does not confirm momentum"
+                else:
+                    current_reason = "Awaiting convergence of VWAP, EMA, and Breakout levels"
+
+        # --- Heartbeat Logging ---
+        # Print a status update every 5 minutes so the user knows what the bot is thinking
+        now = datetime.now()
+        if (now - self.last_heartbeat_time).total_seconds() >= 300: # 300 seconds = 5 mins
+            logger.info(f"[HEARTBEAT] NIFTY LTP: {close_price:.2f} | ADX: {adx:.2f} | RSI: {rsi:.2f}")
+            logger.info(f"[STATUS] Skipping Trade: {current_reason}")
+            self.last_heartbeat_time = now
+        # -------------------------
 
 # ==========================================
 # MAIN EXECUTION
