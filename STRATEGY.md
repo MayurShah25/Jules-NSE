@@ -4,57 +4,43 @@ This document outlines the detailed strategy architecture for the automated Opti
 
 ## 1. Strategy Architecture Overview
 
-The bot is designed to scalp options (buying CE and PE) based on key intraday levels, specifically the Day High and Day Low. It incorporates multiple filters to ensure a high probability of success and rigorous risk management to protect capital.
+The bot is a high-frequency, 1-minute intraday scalper. It completely abandons arbitrary "Daily" support and resistance levels, instead utilizing a highly dynamic **30-Minute Rolling Window** combined with advanced momentum filters to trigger trades only during statistically probable expansions.
 
 ### Entry Logic
 
-1.  **Level Identification:** The bot dynamically calculates the `Day High` and `Day Low` for the current trading session based on incoming tick/candle data.
-2.  **Breakout Detection:**
-    *   **Bullish:** If the current price crosses and closes above the `Day High`.
-    *   **Bearish:** If the current price crosses and closes below the `Day Low`.
-3.  **Instrument Selection:**
-    *   Upon a bullish breakout, the bot selects the At-The-Money (ATM) Call Option (CE) strike.
-    *   Upon a bearish breakdown, the bot selects the ATM Put Option (PE) strike.
-    *   ATM strikes are chosen for a balance of delta and liquidity, preventing excessive theta decay common in OTM strikes.
+1.  **Level Identification:** The bot dynamically calculates a `Rolling High` and `Rolling Low` based on the previous 30 candles (30 minutes).
+2.  **Breakout Strategy:**
+    *   **Bullish Breakout:** Current price breaks the 30-min Rolling High.
+    *   **Bearish Breakdown:** Current price breaks the 30-min Rolling Low.
+3.  **Mean-Reversion Strategy (Wick Rejections):**
+    *   If a candle wicks outside the 30-min rolling level but closes back *inside* the range (in the direction of the macro trend), the bot buys the bounce.
+4.  **Instrument Selection:**
+    *   It strictly buys At-The-Money (ATM) strikes (rounded to the nearest 50 for Nifty) to maintain a healthy ~0.5 Delta and prevent excessive Theta decay.
 
-### Exit Logic
+### Exit & Dynamic Risk Management
 
-1.  **Stop Loss (SL):** A strict percentage-based Stop Loss (e.g., 10% of the premium) is calculated and placed immediately upon entry.
-2.  **Trailing Stop Loss (TSL):** As the trade moves in favor, the SL trails the price by a fixed percentage (e.g., 5%). This locks in profits during fast momentum moves (scalping).
-3.  **Manual/Time Exit:** The bot will automatically exit any open positions if a manual interrupt occurs or if the trading day ends.
+The bot utilizes an AI-like Dynamic Risk Allocation system based on the `ADX` indicator at the exact time of entry:
 
----
-
-## 2. Filters & Indicator Setup
-
-To prevent entering false breakouts and losing capital in choppy markets, the bot relies on specific technical indicators.
-
-### Recommended Timeframe
-*   **1-Minute Chart:** Ideal for high-frequency scalping, allowing the bot to catch fast momentum bursts based on tighter intraday levels.
-
-### Trend Filter (Don't fight the trend)
-*   **Indicators:** VWAP (Volume Weighted Average Price) and 50-period EMA (Exponential Moving Average).
-*   **Logic:**
-    *   **Long CE Filter:** Price *must* be above both VWAP and the 50 EMA. This confirms the intraday trend is bullish and supports the Day High breakout.
-    *   **Long PE Filter:** Price *must* be below both VWAP and the 50 EMA. This confirms the intraday trend is bearish and supports the Day Low breakdown.
-
-### Sideways Market Filter (Prevent Bleeding/Starvation)
-*   **Indicator:** ADX (Average Directional Index) - 14-period.
-*   **Logic:**
-    *   ADX measures trend strength regardless of direction.
-    *   If ADX < 20, the market is considered sideways or lacking momentum.
-    *   The bot will pause and **not take any trades** as long as ADX remains below 20. Options buyers bleed capital to theta decay and whipsaws in these conditions.
+*   **Strong Trend Mode (ADX >= 35):** The bot recognizes a massive breakout is occurring. It widens the Stop Loss to **8%** to survive volatility, pushes the Take Profit target to **30%**, and uses a **5%** Trailing Take Profit (TTP) to let the winner run.
+*   **Moderate Trend Mode (ADX < 35):** The bot recognizes standard momentum. It tightens the Stop Loss to **5%**, aims for a **15%** Take Profit target, and trails very tightly at **3%**.
+*   **Break-Even Preservation:** On all trades, if the option premium gains match the Stop Loss percentage (a 1:1 Risk/Reward), the Stop Loss is permanently moved to the Break-Even entry price to ensure a winning trade never turns red.
 
 ---
 
-## 3. Risk Management Module
+## 2. Advanced Momentum Filters (The "Chop Killer")
 
-Capital protection is the highest priority. The bot implements three layers of safety:
+To prevent bleeding capital in sideways markets (whipsawing), the bot must pass a rigorous set of mathematical filters before any entry is approved.
 
-1.  **Strict System-Placed SL:** The moment an entry order is filled, the script calculates the SL price and should immediately send an SL-M (Stop Loss Market) order to the broker. This protects against sudden violent spikes in the opposite direction.
-2.  **Trailing SL for Scalps:** In scalping, profits can vanish quickly. The bot continuously monitors the Last Traded Price (LTP) of the option and updates the Trailing SL. If the price moves up by 5%, the SL moves up by 5%, securing gains.
-3.  **Daily Kill Switch (Max Loss Per Day):**
-    *   The bot continuously monitors the daily realized/unrealized MTM (Mark-To-Market) PnL.
-    *   A hard limit is set (e.g., -₹5000).
-    *   If the daily loss exceeds this limit, the `kill_switch_active` flag is triggered.
-    *   The bot will immediately close any open positions and halt all trading activity for the remainder of the day to prevent revenge trading or catastrophic losses.
+*   **Timeframe:** 1-Minute Chart.
+*   **Trend Filter (EMA 21):** Price must be above the 21 EMA to buy Calls, and below to buy Puts.
+*   **RSI (14-Period):** Price must demonstrate true directional strength. RSI must be `> 50` for bullish trades and `< 50` for bearish trades.
+*   **Chop Killer 1 (ADX > 25):** If ADX is below 25, the market is entirely sideways. The bot sits idle.
+*   **Chop Killer 2 (VWAP Expansion):** Buying breakouts directly on the VWAP line often results in immediate mean-reversion fakeouts. The bot requires the entry price to be at least `0.05%` away from the VWAP, ensuring we are buying true expansion momentum.
+
+---
+
+## 3. Capital Protection Module
+
+1.  **Strict 15:15 MIS Auto-Square-Off:** Options buyers are crushed by overnight gaps and Theta decay. At exactly 3:15 PM, the bot auto-cancels all pending orders and Market-Sells any open positions, keeping you 100% in cash overnight.
+2.  **Daily Kill Switch (Max Loss Per Day):** The bot continuously monitors your overall MTM. If it hits the defined Daily Max Loss, it completely halts all trading for the rest of the day to prevent revenge trading.
+3.  **Maximum Exposure Capping:** Even as capital compounds, the bot refuses to buy more than **10 Lots (500 units)** per order to respect exchange freeze limits and prevent catastrophic single-trade exposure.

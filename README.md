@@ -42,13 +42,21 @@ python backtest.py
 
 ### Run the Live Bot (Paper Trading)
 By default, `PAPER_TRADING = True` is set at the top of `options_scalping_bot.py`.
-Once you have plugged in your broker's API keys so the bot can fetch the live ticker data, you can run the bot. It will analyze the live market but **will only print the orders to your console** instead of actually risking your capital.
+Once you have plugged in your broker's API keys so the bot can fetch the live ticker data, you can launch the bot via the provided starter scripts. It will automatically check for a valid `access_token.txt`, analyze the live market, and log its thought process (including a 5-minute heartbeat telling you exactly why it is skipping trades).
+
+**For Windows:**
+Double-click `start_bot.bat` or run:
 ```bash
-python options_scalping_bot.py
+start_bot.bat
 ```
+
+**For Mac/Linux:**
+```bash
+./start_bot.sh
+```
+*Note: The bot includes an auto-reconnect function. If the Zerodha socket drops during market hours, it will automatically attempt to reconnect without crashing.*
 
 ### Run the Live Bot (Real Capital)
 Once you are confident in the bot's paper trading performance:
-1. Change `PAPER_TRADING = False` at the top of the script.
-2. Ensure you have uncommented the actual `place_order` execution method for your broker inside the `BrokerAPI.place_order()` function.
-3. Run the script during market hours (09:15 AM to 03:15 PM). The bot will automatically halt and square-off all positions at 3:15 PM.
+1. Change `PAPER_TRADING = False` at the top of `options_scalping_bot.py`.
+2. Run the start script during market hours. The bot will execute live orders, manage dynamic stop losses, and strictly halt and auto-square-off all open positions at exactly **3:15 PM** every day.
