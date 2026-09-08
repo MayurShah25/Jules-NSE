@@ -223,6 +223,7 @@ class ScalpingStrategy:
         self.entry_price = 0.0
         self.current_sl = 0.0
         self.option_symbol = ""
+        self.last_heartbeat_time = datetime.now()
 
     def fetch_and_calculate_indicators(self):
         """Fetches data and calculates Rolling High/Low, VWAP, EMA, ADX."""
@@ -375,6 +376,17 @@ class ScalpingStrategy:
         market_data = self.fetch_and_calculate_indicators()
         if not market_data:
             return
+
+        # --- Heartbeat Logging ---
+        # Print a status update every 5 minutes so the user knows the bot is scanning
+        now = datetime.now()
+        if (now - self.last_heartbeat_time).total_seconds() >= 300: # 300 seconds = 5 mins
+            adx_val = market_data['adx']
+            rsi_val = market_data['rsi']
+            close_val = market_data['close']
+            logger.info(f"[HEARTBEAT] Scanning... NIFTY LTP: {close_val:.2f} | ADX: {adx_val:.2f} | RSI: {rsi_val:.2f}")
+            self.last_heartbeat_time = now
+        # -------------------------
 
         close_price = market_data['close']
         open_price = market_data['open']
