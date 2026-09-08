@@ -9,7 +9,7 @@ To run this bot locally, you need Python installed on your machine.
 1. Open your terminal or command prompt.
 2. Install the required data handling, technical analysis, and broker libraries:
    ```bash
-   pip install pandas numpy ta dhanhq yfinance
+   pip install pandas numpy ta kiteconnect yfinance
    ```
    *(Note: Do NOT install `pandas-ta` as it is incompatible with newer versions of Python. We use the pure Python `ta` library instead.)*
 
@@ -17,11 +17,8 @@ To run this bot locally, you need Python installed on your machine.
 
 Open `options_scalping_bot.py` in your code editor and look at the `BrokerAPI` class near the top.
 
-1.  **Insert API Keys:** You must generate API Keys from your broker's developer portal.
-    *   *Dhan:* Login to Dhan Web -> Profile -> DhanHQ API -> Generate Access Token.
-    *   *Zerodha:* Create an app on Kite Connect developers portal (Note: Zerodha charges a monthly fee for API access).
-2.  **Uncomment the SDK Code:** In the `BrokerAPI.__init__` method, uncomment the lines specific to your broker to initialize the connection.
-3.  **Implement Data Fetching:** You will need to replace the `pass` in `get_historical_data` and the hardcoded return in `get_ltp` with the actual API calls for your broker (e.g., `self.kite.quote(symbol)`).
+1.  **Insert API Keys:** You must generate an API Key from the Kite Connect developers portal.
+2.  **Generate Access Token:** Zerodha requires a daily Access Token generated via a login flow. Ensure you update `self.access_token` in the script every morning before starting the bot.
 
 ## 3. How to Run
 

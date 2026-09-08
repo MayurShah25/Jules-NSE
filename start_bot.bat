@@ -3,7 +3,7 @@ echo ===========================================
 echo   Starting NSE Options Scalping Bot
 echo   Mode: PAPER TRADING
 echo ===========================================
-echo Ensure you have updated your DhanHQ API keys in options_scalping_bot.py
+echo Ensure you have updated your Zerodha API keys in options_scalping_bot.py
 echo Press Ctrl+C to safely stop the bot.
 echo.
 

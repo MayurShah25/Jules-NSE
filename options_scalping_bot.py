@@ -29,85 +29,78 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # ==========================================
-# BROKER INTERFACE (DhanHQ Integration)
+# BROKER INTERFACE (Zerodha KiteConnect Integration)
 # ==========================================
 try:
-    from dhanhq import dhanhq, DhanContext
+    from kiteconnect import KiteConnect
 except ImportError:
-    logger.error("dhanhq library not found. Run: pip install dhanhq")
+    logger.error("kiteconnect library not found. Run: pip install kiteconnect")
 
 class BrokerAPI:
-    """Live integration with DhanHQ API."""
+    """Live integration with Zerodha KiteConnect API."""
     def __init__(self):
         # ---------------------------------------------------------
-        # TODO: Replace with your actual Dhan Client ID and Access Token
-        # You can generate this for free on web.dhan.co -> Profile -> DhanHQ API
+        # TODO: Replace with your actual Zerodha API Key and Daily Access Token
         # ---------------------------------------------------------
-        self.client_id = "YOUR_DHAN_CLIENT_ID"
-        self.access_token = "YOUR_DHAN_ACCESS_TOKEN"
+        self.api_key = "YOUR_ZERODHA_API_KEY"
+
+        # Access tokens in Zerodha must be generated daily via the login flow
+        # Ensure you update this token every morning before starting the bot.
+        self.access_token = "YOUR_DAILY_ACCESS_TOKEN"
 
         self.connect()
 
     def connect(self):
-        """Attempts to establish connection with DhanHQ API."""
+        """Attempts to establish connection with Zerodha API."""
         try:
-            # The newest Dhan SDK requires a DhanContext to be initialized first
-            self.dhan_context = DhanContext(self.client_id, self.access_token)
-            self.dhan = dhanhq(self.dhan_context)
+            self.kite = KiteConnect(api_key=self.api_key)
+            self.kite.set_access_token(self.access_token)
+
+            # Simple ping to profile to verify token is valid
+            self.kite.profile()
 
             self.connected = True
-            logger.info(f"Dhan Broker Connected Successfully. Paper Trading Mode: {PAPER_TRADING}")
+            logger.info(f"Zerodha Broker Connected Successfully. Paper Trading Mode: {PAPER_TRADING}")
         except Exception as e:
             self.connected = False
-            logger.error(f"Failed to connect to Dhan API: {e}")
+            logger.error(f"Failed to connect to Zerodha API (Check if Access Token is valid for today): {e}")
             logger.warning("Bot will idle until connection is established.")
 
     def get_historical_data(self, symbol, timeframe):
-        """Fetches intraday historical OHLCV data from Dhan and converts to Pandas DataFrame."""
+        """Fetches intraday historical OHLCV data from Zerodha and converts to Pandas DataFrame."""
         if not self.connected:
             self.connect()
             if not self.connected:
                 return None
 
         try:
-            # Dhan uses instrument tokens for historical data.
-            # Assuming Nifty 50 Index (Token: 13, Exchange: IDX_I)
-            # You will need to map your required symbol to Dhan's exact security ID
-            security_id = "13"
-            exchange_segment = "IDX_I"
+            # Zerodha requires the instrument token for historical data.
+            # Nifty 50 Index Instrument Token is generally 256265
+            instrument_token = 256265
 
-            # Map timeframe string to Dhan's format (e.g., '1' for 1 minute)
-            tf_map = {"1min": "1", "5min": "5", "15min": "15"}
-            dhan_tf = tf_map.get(timeframe, "1")
+            # Map timeframe string to Zerodha's format
+            tf_map = {"1min": "minute", "3min": "3minute", "5min": "5minute", "15min": "15minute"}
+            kite_tf = tf_map.get(timeframe, "minute")
 
-            today_str = datetime.now().strftime("%Y-%m-%d")
+            # Fetch today's data up to the current minute
+            from_date = datetime.now().replace(hour=9, minute=15, second=0, microsecond=0)
+            to_date = datetime.now()
 
-            response = self.dhan.intraday_minute_data(
-                security_id=security_id,
-                exchange_segment=exchange_segment,
-                instrument_type="INDEX",
-                from_date=today_str,
-                to_date=today_str
+            records = self.kite.historical_data(
+                instrument_token=instrument_token,
+                from_date=from_date,
+                to_date=to_date,
+                interval=kite_tf
             )
 
-            if response.get('status') == 'success':
-                data = response.get('data', {})
-                df = pd.DataFrame({
-                    'open': data.get('open', []),
-                    'high': data.get('high', []),
-                    'low': data.get('low', []),
-                    'close': data.get('close', []),
-                    'volume': data.get('volume', [])
-                })
-                # Dhan returns lists, convert to numeric
-                for col in df.columns:
-                    df[col] = pd.to_numeric(df[col], errors='coerce')
-
-                # Simple resampling if timeframe is not 1 min (Dhan intraday api usually returns 1 min base)
-                # This ensures rolling windows calculate correctly
+            if records:
+                df = pd.DataFrame(records)
+                # Ensure correct column naming for the strategy
+                df = df.rename(columns={'date': 'datetime'})
+                df.set_index('datetime', inplace=True)
                 return df
             else:
-                logger.error(f"Failed to fetch historical data: {response}")
+                logger.error("No historical data returned from Zerodha.")
                 return None
         except Exception as e:
             logger.error(f"Error fetching historical data: {e}")
@@ -121,17 +114,14 @@ class BrokerAPI:
                 return 0.0
 
         try:
-            # Note: You must pass the specific Security ID mapped to the symbol
-            # For simplicity in this structure, returning a mock value if live call fails
-            # In a full live setup, map `symbol` -> `security_id`
-            # response = self.dhan.get_quote(exchange_segment='NFO_OPT', security_id="mapped_id")
-            # return response['data']['LTP']
-
-            # Returning mock value so the paper trading logic loops don't crash without valid API keys
-            return 22000.0
+            # Zerodha requires the exchange prefix for LTP (e.g., NFO:NIFTY24MAY22000CE)
+            exchange_symbol = f"NFO:{symbol}"
+            response = self.kite.ltp([exchange_symbol])
+            return response[exchange_symbol]['last_price']
         except Exception as e:
-            logger.error(f"Error fetching LTP: {e}")
-            return 0.0
+            logger.error(f"Error fetching LTP for {symbol}: {e}")
+            # Fallback mock value so paper trading doesn't crash during structure testing if symbol format fails
+            return 22000.0
 
     def place_order(self, symbol, side, qty, order_type="MARKET", price=0.0):
         if PAPER_TRADING:
@@ -144,43 +134,37 @@ class BrokerAPI:
 
             logger.info(f"Placing LIVE {side} order for {qty} of {symbol} at {order_type}")
 
-            # Map 'BUY'/'SELL' to Dhan constants
-            txn_type = self.dhan.BUY if side.upper() == "BUY" else self.dhan.SELL
-            ord_type = self.dhan.MARKET
+            # Map 'BUY'/'SELL' to Zerodha constants
+            txn_type = self.kite.TRANSACTION_TYPE_BUY if side.upper() == "BUY" else self.kite.TRANSACTION_TYPE_SELL
+            ord_type = self.kite.ORDER_TYPE_MARKET if order_type.upper() == "MARKET" else self.kite.ORDER_TYPE_LIMIT
 
             try:
-                response = self.dhan.place_order(
-                    security_id="MAPPED_ID_HERE", # Must map symbol to Dhan Security ID
-                    exchange_segment=self.dhan.NFO,
+                order_id = self.kite.place_order(
+                    variety=self.kite.VARIETY_REGULAR,
+                    exchange=self.kite.EXCHANGE_NFO,
+                    tradingsymbol=symbol,
                     transaction_type=txn_type,
                     quantity=qty,
+                    product=self.kite.PRODUCT_MIS, # Intraday
                     order_type=ord_type,
-                    product_type=self.dhan.INTRA, # MIS / Intraday
                     price=price
                 )
-                if response.get('status') == 'success':
-                    order_id = response.get('data', {}).get('orderId')
-                    logger.info(f"Live order placed successfully. Order ID: {order_id}")
-                    return order_id
-                else:
-                    logger.error(f"Order rejected by broker: {response}")
-                    return None
+                logger.info(f"Live order placed successfully. Order ID: {order_id}")
+                return order_id
             except Exception as e:
-                logger.error(f"Error placing order: {e}")
+                logger.error(f"Error placing order via Zerodha: {e}")
                 return None
 
     def get_pnl(self):
-        """Fetches today's total realized/unrealized MTM from Dhan."""
+        """Fetches today's total realized/unrealized MTM from Zerodha."""
         if not self.connected or PAPER_TRADING:
             return 0.0
 
         try:
-            response = self.dhan.get_positions()
-            if response.get('status') == 'success':
-                positions = response.get('data', [])
-                total_mtm = sum(float(pos.get('mtm', 0.0)) for pos in positions)
-                return total_mtm
-            return 0.0
+            positions = self.kite.positions()
+            net_positions = positions.get('net', [])
+            total_mtm = sum(float(pos.get('m2m', 0.0)) for pos in net_positions)
+            return total_mtm
         except Exception as e:
             logger.error(f"Error fetching PnL: {e}")
             return 0.0
