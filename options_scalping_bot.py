@@ -46,21 +46,28 @@ class BrokerAPI:
         self.client_id = "YOUR_DHAN_CLIENT_ID"
         self.access_token = "YOUR_DHAN_ACCESS_TOKEN"
 
+        self.connect()
+
+    def connect(self):
+        """Attempts to establish connection with DhanHQ API."""
         try:
             # The newest Dhan SDK requires a DhanContext to be initialized first
             self.dhan_context = DhanContext(self.client_id, self.access_token)
             self.dhan = dhanhq(self.dhan_context)
 
             self.connected = True
-            logger.info(f"Dhan Broker Initialized. Paper Trading Mode: {PAPER_TRADING}")
+            logger.info(f"Dhan Broker Connected Successfully. Paper Trading Mode: {PAPER_TRADING}")
         except Exception as e:
             self.connected = False
             logger.error(f"Failed to connect to Dhan API: {e}")
+            logger.warning("Bot will idle until connection is established.")
 
     def get_historical_data(self, symbol, timeframe):
         """Fetches intraday historical OHLCV data from Dhan and converts to Pandas DataFrame."""
         if not self.connected:
-            return None
+            self.connect()
+            if not self.connected:
+                return None
 
         try:
             # Dhan uses instrument tokens for historical data.
@@ -109,7 +116,9 @@ class BrokerAPI:
     def get_ltp(self, symbol):
         """Fetches Last Traded Price (LTP)."""
         if not self.connected:
-            return 0.0
+            self.connect()
+            if not self.connected:
+                return 0.0
 
         try:
             # Note: You must pass the specific Security ID mapped to the symbol
