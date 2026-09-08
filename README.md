@@ -13,14 +13,26 @@ To run this bot locally, you need Python installed on your machine.
    ```
    *(Note: Do NOT install `pandas-ta` as it is incompatible with newer versions of Python. We use the pure Python `ta` library instead.)*
 
-## 2. Configuring the Bot (`options_scalping_bot.py`)
+## 2. Daily Authentication (Zerodha)
 
-Open `options_scalping_bot.py` in your code editor and look at the `BrokerAPI` class near the top.
+Zerodha's API regulations require you to manually authenticate your account once per day to receive a daily access token.
 
-1.  **Insert API Keys:** You must generate an API Key from the Kite Connect developers portal.
-2.  **Generate Access Token:** Zerodha requires a daily Access Token generated via a login flow. Ensure you update `self.access_token` in the script every morning before starting the bot.
+1. Open `zerodha_login.py` in your text editor.
+2. Replace `"YOUR_ZERODHA_API_KEY"` and `"YOUR_ZERODHA_API_SECRET"` with your actual app credentials from the Kite Connect portal.
+3. Every morning (after 7:30 AM), run this script:
+   ```bash
+   python zerodha_login.py
+   ```
+4. The script will give you a login URL. Click it, log in to Zerodha using your normal password + TOTP PIN.
+5. You will be redirected to a blank page. Look at the URL in your browser; it will contain `request_token=XXXXX`.
+6. Copy the `XXXXX` part and paste it back into your terminal.
+7. The script will automatically fetch your Daily Access Token and save it to `access_token.txt`.
 
-## 3. How to Run
+## 3. Configuring the Bot
+
+Open `options_scalping_bot.py` and replace `"YOUR_ZERODHA_API_KEY"` on Line 44. You do **not** need to touch the access token, as the bot will automatically read it from the `access_token.txt` file you generated in Step 2.
+
+## 4. How to Run
 
 ### Run the Backtester (Historical Data Simulation)
 The backtester includes built-in mock data generation so you can run it immediately without API keys to see how the mathematical logic and Indian broker fee structures work.
