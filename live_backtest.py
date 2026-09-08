@@ -3,12 +3,12 @@ import pandas as pd
 from datetime import datetime
 import backtest
 
-# Fetch Nifty 50 data for Sept 3rd, 2026
-print("Fetching Nifty data for Sept 3rd, 2026...")
-nifty = yf.download('^NSEI', start='2026-09-03', end='2026-09-04', interval='1m', progress=False)
+# Fetch today's Nifty 50 data (1-minute intervals)
+print("Fetching today's live Nifty data...")
+nifty = yf.download('^NSEI', period='1d', interval='1m', progress=False)
 
 if nifty.empty:
-    print("Market might be closed or data unavailable for this date.")
+    print("Market might be closed or data unavailable yet.")
 else:
     # yfinance returns MultiIndex columns in recent versions, flatten it
     if isinstance(nifty.columns, pd.MultiIndex):
@@ -29,8 +29,8 @@ else:
         np.random.seed(42)
         nifty['volume'] = np.random.randint(10000, 150000, size=len(nifty))
 
-    print(f"Loaded {len(nifty)} candles. Starting backtest on historical data...")
+    print(f"Loaded {len(nifty)} candles. Starting backtest on real today's data...")
 
-    # Initialize and run our exact backtester logic
+    # Initialize and run our exact backtester logic on the live data
     tester = backtest.Backtester(nifty)
     tester.run()

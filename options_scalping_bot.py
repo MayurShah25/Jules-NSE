@@ -91,8 +91,8 @@ class BrokerAPI:
             tf_map = {"1min": "minute", "3min": "3minute", "5min": "5minute", "15min": "15minute"}
             kite_tf = tf_map.get(timeframe, "minute")
 
-            # Fetch today's data up to the current minute
-            from_date = datetime.now().replace(hour=9, minute=15, second=0, microsecond=0)
+            # Fetch 3 days of data to give EMA and RSI enough runway to stabilize and avoid NaNs
+            from_date = (datetime.now() - timedelta(days=3)).replace(hour=9, minute=15, second=0, microsecond=0)
             to_date = datetime.now()
 
             records = self.kite.historical_data(
@@ -247,12 +247,22 @@ class ScalpingStrategy:
 
         df[f'RSI_{RSI_PERIOD}'] = ta.momentum.RSIIndicator(close=df['close'], window=RSI_PERIOD).rsi()
 
-        # Simplified Intraday VWAP
+        # Simplified Intraday VWAP / Fallback
+        # Extract only today's data for VWAP (since VWAP resets daily)
+        today_date = datetime.now().date()
+        today_mask = df.index.date == today_date
+
+        # We must calculate VWAP only on today's data slice
         df['Typical_Price'] = (df['high'] + df['low'] + df['close']) / 3
-        df['Vol_x_Typ'] = df['volume'] * df['Typical_Price']
-        df['Cum_Vol'] = df['volume'].cumsum()
-        df['Cum_Vol_x_Typ'] = df['Vol_x_Typ'].cumsum()
-        df['VWAP_D'] = df['Cum_Vol_x_Typ'] / df['Cum_Vol']
+
+        # If the broker returns 0 volume for the index, fallback to cumulative typical price average
+        if 'volume' not in df.columns or df.loc[today_mask, 'volume'].sum() == 0:
+            df.loc[today_mask, 'VWAP_D'] = df.loc[today_mask, 'Typical_Price'].expanding().mean()
+        else:
+            df.loc[today_mask, 'Vol_x_Typ'] = df.loc[today_mask, 'volume'] * df.loc[today_mask, 'Typical_Price']
+            df.loc[today_mask, 'Cum_Vol'] = df.loc[today_mask, 'volume'].cumsum()
+            df.loc[today_mask, 'Cum_Vol_x_Typ'] = df.loc[today_mask, 'Vol_x_Typ'].cumsum()
+            df.loc[today_mask, 'VWAP_D'] = df.loc[today_mask, 'Cum_Vol_x_Typ'] / df.loc[today_mask, 'Cum_Vol']
 
         latest_data = df.iloc[-1]
 
