@@ -129,8 +129,15 @@ class BrokerAPI:
             return 100.0 + random.uniform(-2, 2)
 
         try:
-            # Zerodha requires the exchange prefix for LTP (e.g., NFO:NIFTY24MAY22000CE)
-            exchange_symbol = f"NFO:{symbol}"
+            # Index spot price is on the NSE, options are on NFO
+            if symbol == "NIFTY":
+                exchange_symbol = "NSE:NIFTY 50"
+            elif symbol == "BANKNIFTY":
+                exchange_symbol = "NSE:NIFTY BANK"
+            else:
+                # Zerodha requires the exchange prefix for LTP (e.g., NFO:NIFTY24MAY22000CE)
+                exchange_symbol = f"NFO:{symbol}"
+
             response = self.kite.ltp([exchange_symbol])
             return response[exchange_symbol]['last_price']
         except Exception as e:
