@@ -144,11 +144,16 @@ class Backtester:
             self.trade_sl_pct = 0.08      # 8% Stop Loss (give it room to breathe)
             self.trade_target_pct = 0.20  # 20% Take Profit
             self.trade_trailing_pct = 0.05 # 5% trailing (let winners run)
-        else:
+        elif adx_value >= ADX_THRESHOLD:
             # Moderate trend identified: Balanced scalping settings
             self.trade_sl_pct = 0.05      # 5% Stop Loss (cut fast)
-            self.trade_target_pct = 0.10  # 10% Take Profit (1:3 Risk/Reward)
+            self.trade_target_pct = 0.10  # 10% Take Profit (1:2 Risk/Reward)
             self.trade_trailing_pct = 0.03 # 3% tight trailing
+        else:
+            # Sideways/Choppy Market: Tight scalping settings
+            self.trade_sl_pct = 0.03      # 3% Stop Loss (cut instantly if range breaks)
+            self.trade_target_pct = 0.06  # 6% Take Profit (hit and run)
+            self.trade_trailing_pct = 0.02 # 2% ultra-tight trailing
 
         self.current_sl = self.entry_price * (1 - self.trade_sl_pct)
         self.max_opt_price_seen = self.entry_price
@@ -287,9 +292,6 @@ class Backtester:
 
             # Look for entries if not in position
             else:
-                if row[f'ADX_{ADX_PERIOD}'] < ADX_THRESHOLD:
-                    continue # Sideways market
-
                 close = row['close']
                 open_price = row['open']
                 high = row['high']
@@ -300,11 +302,32 @@ class Backtester:
                 ema = row[f'EMA_{EMA_PERIOD}']
                 rsi = row[f'RSI_{RSI_PERIOD}']
                 adx_slope = row['ADX_Slope']
+                adx_val = row[f'ADX_{ADX_PERIOD}']
 
                 # We need valid rolling levels and indicators to trade
                 if pd.isna(r_high) or pd.isna(r_low) or pd.isna(rsi) or pd.isna(adx_slope):
                     continue
 
+                # ==========================================
+                # STRATEGY 1: SIDEWAYS / CHOPPY MARKET
+                # ==========================================
+                if adx_val < ADX_THRESHOLD:
+                    # Supply & Demand Scalping (Mean-Reversion off extremes)
+                    # Long CE: Price drops to touch Rolling Low (Demand), closes above it, RSI indicates bounce
+                    if low <= r_low and close > r_low and rsi < 45:
+                        self._execute_trade(row, "CE")
+                        continue
+
+                    # Long PE: Price pushes to touch Rolling High (Supply), closes below it, RSI indicates rejection
+                    elif high >= r_high and close < r_high and rsi > 55:
+                        self._execute_trade(row, "PE")
+                        continue
+
+                    continue # Skip momentum strategies if in chop zone
+
+                # ==========================================
+                # STRATEGY 2: MOMENTUM / TRENDING MARKET
+                # ==========================================
                 # Chop Killer: Ensure price is expanding away from VWAP
                 vwap_distance_pct = abs(close - vwap) / vwap
 

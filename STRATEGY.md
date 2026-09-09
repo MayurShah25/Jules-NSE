@@ -21,9 +21,10 @@ The bot is a high-frequency, 1-minute intraday scalper. It completely abandons a
 
 The bot utilizes an AI-like Dynamic Risk Allocation system based on the `ADX` indicator at the exact time of entry:
 
-*   **Strong Trend Mode (ADX >= 35):** The bot recognizes a massive breakout is occurring. It widens the Stop Loss to **8%** to survive volatility, pushes the Take Profit target to **30%**, and uses a **5%** Trailing Take Profit (TTP) to let the winner run.
-*   **Moderate Trend Mode (ADX < 35):** The bot recognizes standard momentum. It tightens the Stop Loss to **5%**, aims for a **15%** Take Profit target, and trails very tightly at **3%**.
-*   **Break-Even Preservation:** On all trades, if the option premium gains match the Stop Loss percentage (a 1:1 Risk/Reward), the Stop Loss is permanently moved to the Break-Even entry price to ensure a winning trade never turns red.
+*   **Strong Trend Mode (ADX >= 30):** The bot recognizes a massive breakout is occurring. It widens the Stop Loss to **8%** to survive volatility, pushes the Take Profit target to **20%**, and uses a **5%** Trailing Take Profit (TTP) to let the winner run.
+*   **Moderate Trend Mode (ADX >= 20):** The bot recognizes standard momentum. It tightens the Stop Loss to **5%**, aims for a **10%** Take Profit target, and trails very tightly at **3%**.
+*   **Sideways/Chop Mode (ADX < 20):** The bot recognizes the market is ranging. It executes high-probability mean-reversion bounces off the 30-minute Rolling High/Low with ultra-tight constraints: **3% SL**, **6% Target**, and **2% Trailing**.
+*   **Step-Trailing & Break-Even Preservation:** On all trades, if the option premium gains match the Stop Loss percentage (a 1:1 Risk/Reward), the Stop Loss is permanently moved to the Break-Even entry price to ensure a winning trade never turns red. The SL is then continuously "step-trailed" upwards behind the price action to incrementally lock in profit.
 
 ---
 
@@ -33,9 +34,9 @@ To prevent bleeding capital in sideways markets (whipsawing), the bot must pass 
 
 *   **Timeframe:** 1-Minute Chart.
 *   **Trend Filter (EMA 21):** Price must be above the 21 EMA to buy Calls, and below to buy Puts.
-*   **RSI (14-Period):** Price must demonstrate true directional strength. RSI must be `> 50` for bullish trades and `< 50` for bearish trades.
-*   **Chop Killer 1 (ADX > 25):** If ADX is below 25, the market is entirely sideways. The bot sits idle.
-*   **Chop Killer 2 (VWAP Expansion):** Buying breakouts directly on the VWAP line often results in immediate mean-reversion fakeouts. The bot requires the entry price to be at least `0.05%` away from the VWAP, ensuring we are buying true expansion momentum.
+*   **RSI (14-Period):** Price must demonstrate true directional strength. RSI must be `> 50` for bullish trades and `< 50` for bearish trades (unless in Sideways Chop Mode, where RSI is reversed to catch oversold/overbought fading).
+*   **Dual-Engine Logic:** If ADX > 20, the bot trades Momentum (Breakouts). If ADX < 20, the bot trades Mean Reversion (Supply & Demand bounces).
+*   **Chop Killer (VWAP Expansion):** Buying breakouts directly on the VWAP line often results in immediate mean-reversion fakeouts. The bot requires the entry price to be at least `0.05%` away from the VWAP, ensuring we are buying true expansion momentum. (This is bypassed in the first 45 minutes of the market open to catch gap-down momentum).
 
 ---
 
