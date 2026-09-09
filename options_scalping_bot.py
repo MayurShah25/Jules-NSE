@@ -265,6 +265,7 @@ class ScalpingStrategy:
         self.last_pnl_heartbeat_time = datetime.now()
         self.last_fetch_time = None
         self.cached_market_data = None
+        self.daily_realized_pnl = 0.0
 
     def fetch_and_calculate_indicators(self):
         """Fetches data and calculates Rolling High/Low, VWAP, EMA, ADX."""
@@ -380,12 +381,12 @@ class ScalpingStrategy:
         # Dynamic Risk Allocation based on trend strength
         if adx_value >= 30:
             self.trade_sl_pct = 0.08
-            self.trade_target_pct = 0.30
+            self.trade_target_pct = 0.20
             self.trade_trailing_pct = 0.05
             logger.info("Very Strong Trend Detected. Engaging Max Profitability settings.")
         else:
             self.trade_sl_pct = 0.05
-            self.trade_target_pct = 0.15
+            self.trade_target_pct = 0.10
             self.trade_trailing_pct = 0.03
             logger.info("Moderate Trend Detected. Engaging Balanced Scalp settings.")
 
@@ -404,7 +405,19 @@ class ScalpingStrategy:
     def exit_trade(self, reason):
         """Exits current position."""
         self.broker.place_order(self.option_symbol, "SELL", QTY)
-        logger.info(f"Exited position {self.current_position}. Reason: {reason}")
+
+        try:
+            exit_price = self.broker.get_ltp(self.option_symbol)
+        except Exception:
+            # Fallback to current SL if fetch fails during exit
+            exit_price = self.current_sl
+
+        realized_pnl = (exit_price - self.entry_price) * QTY
+        self.daily_realized_pnl += realized_pnl
+
+        logger.info(f"Exited position {self.current_position} at {exit_price:.2f}. Reason: {reason}")
+        logger.info(f"Trade PNL: ₹{realized_pnl:.2f} | Total Daily PNL: ₹{self.daily_realized_pnl:.2f}")
+
         self.in_position = False
         self.current_position = None
         self.entry_price = 0.0
@@ -452,9 +465,18 @@ class ScalpingStrategy:
         elif profit_pct >= self.trade_sl_pct and not self.target_reached and not self.breakeven_reached:
             self.breakeven_reached = True
             new_sl = self.entry_price * 1.01 # Slightly above entry to cover fees
-            logger.info(f"1:1 R:R Reached. Moving SL to Break Even: {new_sl}")
+            logger.info(f"1:1 R:R Reached. Moving SL to Break Even: {new_sl:.2f}")
             self.current_sl = new_sl
             # In reality, modify the pending SL-M order with the broker here
+
+        # 4. Continuous Step Trailing (Between Break-Even and Target)
+        elif self.breakeven_reached and not self.target_reached:
+            # Trail behind by a wider margin (e.g. initial SL pct) to give it room to hit target
+            # This locks in gains if the price reverses midway before hitting the final target
+            new_sl = self.risk_manager.update_trailing_take_profit(current_opt_price, self.current_sl, self.max_opt_price_seen, self.trade_sl_pct)
+            if new_sl > self.current_sl:
+                logger.info(f"Step-Trailing SL up to lock in profit: {new_sl:.2f}")
+                self.current_sl = new_sl
 
     def run_cycle(self):
         """Main strategy loop executed every tick/candle."""
@@ -581,6 +603,9 @@ if __name__ == "__main__":
                 # If market is fully closed, exit loop
                 if now > datetime.strptime("15:30", "%H:%M").time():
                     logger.info("Market Closed for the day. Exiting.")
+                    logger.info(f"===================================")
+                    logger.info(f"FINAL DAILY PNL: ₹{bot.daily_realized_pnl:.2f}")
+                    logger.info(f"===================================")
                     break
 
             # Wait for next cycle
@@ -590,3 +615,6 @@ if __name__ == "__main__":
         logger.info("Bot stopped manually.")
         if bot.in_position:
             bot.exit_trade("Manual Stop")
+        logger.info(f"===================================")
+        logger.info(f"FINAL DAILY PNL: ₹{bot.daily_realized_pnl:.2f}")
+        logger.info(f"===================================")
