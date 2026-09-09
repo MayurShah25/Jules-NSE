@@ -216,6 +216,18 @@ class BrokerAPI:
             logger.error(f"Error fetching PnL: {e}")
             return 0.0
 
+    def get_balance(self):
+        """Fetches available capital from Zerodha."""
+        if not self.connected or PAPER_TRADING:
+            return 50000.0  # Default mock capital for paper trading
+
+        try:
+            margins = self.kite.margins()
+            return float(margins.get('equity', {}).get('available', {}).get('live_balance', 50000.0))
+        except Exception as e:
+            logger.error(f"Error fetching Balance: {e}")
+            return 50000.0
+
 # ==========================================
 # RISK MANAGEMENT MODULE
 # ==========================================
@@ -225,14 +237,28 @@ class RiskManager:
         self.daily_pnl = 0.0
         self.kill_switch_active = False
 
+        # Dynamic Kill Switch calculation based on opening balance
+        self.starting_capital = self.broker.get_balance()
+        if self.starting_capital < 100000:
+            self.max_loss_limit = -10000.0
+        else:
+            self.max_loss_limit = -15000.0
+
     def check_kill_switch(self):
         """Checks if the daily max loss limit has been hit."""
         if self.kill_switch_active:
             return True
 
-        self.daily_pnl = self.broker.get_pnl()
-        if self.daily_pnl <= MAX_LOSS_PER_DAY:
-            logger.error(f"KILL SWITCH TRIGGERED! Max Loss of {MAX_LOSS_PER_DAY} reached. Daily PnL: {self.daily_pnl}")
+        # In Paper Trading, the Risk Manager should track the mocked internal daily_realized_pnl
+        # In Live Trading, it checks the actual broker MTM
+        if PAPER_TRADING:
+            # We will rely on the ScalpingStrategy to inject the daily_realized_pnl here later in the main loop
+            pass
+        else:
+            self.daily_pnl = self.broker.get_pnl()
+
+        if self.daily_pnl <= self.max_loss_limit:
+            logger.error(f"KILL SWITCH TRIGGERED! Max Loss limit of {self.max_loss_limit} reached. Daily PnL: {self.daily_pnl}")
             self.kill_switch_active = True
             return True
         return False
@@ -485,6 +511,10 @@ class ScalpingStrategy:
 
     def run_cycle(self):
         """Main strategy loop executed every tick/candle."""
+        # Sync mock PNL to risk manager for paper trading kill switch
+        if PAPER_TRADING:
+            self.risk_manager.daily_pnl = self.daily_realized_pnl
+
         if self.risk_manager.check_kill_switch():
             if self.in_position:
                 self.exit_trade("Kill Switch Triggered")

@@ -1,0 +1,344 @@
+2026-09-09 13:20:29,768 - ERROR - $^NSEI: 1m data not available for startTime=1785522600 and endTime=1786127400. The requested range must be within the last 30 days.
+2026-09-09 13:20:29,775 - ERROR -
+1 Failed download:
+2026-09-09 13:20:29,776 - ERROR - ['^NSEI']: 1m data not available for startTime=1785522600 and endTime=1786127400. The requested range must be within the last 30 days.
+2026-09-09 13:20:30,229 - ERROR - $^NSEI: 1m data not available for startTime=1786127400 and endTime=1786732200. The requested range must be within the last 30 days.
+2026-09-09 13:20:30,237 - ERROR -
+1 Failed download:
+2026-09-09 13:20:30,238 - ERROR - ['^NSEI']: 1m data not available for startTime=1786127400 and endTime=1786732200. The requested range must be within the last 30 days.
+2026-09-09 13:20:31,049 - INFO - Calculating indicators...
+2026-09-09 13:20:31,077 - INFO - Starting backtest loop...
+2026-09-09 13:20:31,120 - INFO -
+================= BACKTEST SUMMARY =================
+2026-09-09 13:20:31,120 - INFO - Initial Capital: 50000.00
+2026-09-09 13:20:31,120 - INFO - Final Capital:   57492.55
+2026-09-09 13:20:31,120 - INFO - Net PnL:         7492.55
+2026-09-09 13:20:31,120 - INFO -
+--- DETAILED TRADE LOG ---
+2026-09-09 13:20:31,121 - INFO - Trade #1: NIFTY24250PE (Qty: 350) | Entry: 2026-08-17 10:17 @ ₹135.48 | Exit: 2026-08-17 10:50 @ ₹147.47 | Reason: Trailing Take Profit Hit | Net PnL: ₹4022.55
+2026-09-09 13:20:31,121 - INFO - Trade #2: NIFTY24250CE (Qty: 450) | Entry: 2026-08-17 11:24 @ ₹109.15 | Exit: 2026-08-17 11:39 @ ₹113.00 | Reason: Trailing Take Profit Hit | Net PnL: ₹1560.42
+2026-09-09 13:20:31,121 - INFO - Trade #3: NIFTY24250PE (Qty: 400) | Entry: 2026-08-17 11:45 @ ₹130.42 | Exit: 2026-08-17 11:48 @ ₹125.51 | Reason: SL Hit | Net PnL: ₹-2137.09
+2026-09-09 13:20:31,122 - INFO - Trade #4: NIFTY24250PE (Qty: 300) | Entry: 2026-08-17 11:49 @ ₹150.59 | Exit: 2026-08-17 11:50 @ ₹145.08 | Reason: SL Hit | Net PnL: ₹-1810.72
+2026-09-09 13:20:31,122 - INFO - Trade #5: NIFTY24300CE (Qty: 350) | Entry: 2026-08-17 12:17 @ ₹136.75 | Exit: 2026-08-17 12:57 @ ₹156.16 | Reason: Trailing Take Profit Hit | Net PnL: ₹6617.62
+2026-09-09 13:20:31,122 - INFO - Trade #6: NIFTY24350CE (Qty: 300) | Entry: 2026-08-17 13:00 @ ₹164.84 | Exit: 2026-08-17 15:15 @ ₹162.86 | Reason: MIS Auto Square Off (15:15) | Net PnL: ₹-760.24
+2026-09-09 13:20:31,122 - INFO - --------------------------
+
+2026-09-09 13:20:31,123 - INFO - Total Trades:    6
+2026-09-09 13:20:31,124 - INFO - Win Rate:        50.00%
+2026-09-09 13:20:31,124 - INFO - Gross PnL:       8508.33
+2026-09-09 13:20:31,124 - INFO - Total Taxes:     1015.79
+2026-09-09 13:20:31,124 - INFO - ====================================================
+
+2026-09-09 13:20:31,126 - INFO - Calculating indicators...
+2026-09-09 13:20:31,152 - INFO - Starting backtest loop...
+2026-09-09 13:20:31,198 - INFO -
+================= BACKTEST SUMMARY =================
+2026-09-09 13:20:31,198 - INFO - Initial Capital: 57492.55
+2026-09-09 13:20:31,198 - INFO - Final Capital:   46267.41
+2026-09-09 13:20:31,198 - INFO - Net PnL:         -11225.14
+2026-09-09 13:20:31,198 - INFO -
+--- DETAILED TRADE LOG ---
+2026-09-09 13:20:31,199 - INFO - Trade #1: NIFTY24200CE (Qty: 250) | Entry: 2026-08-18 09:47 @ ₹182.48 | Exit: 2026-08-18 09:55 @ ₹183.84 | Reason: Break Even Hit | Net PnL: ₹179.52
+2026-09-09 13:20:31,200 - INFO - Trade #2: NIFTY24200CE (Qty: 450) | Entry: 2026-08-18 10:03 @ ₹114.07 | Exit: 2026-08-18 10:13 @ ₹114.21 | Reason: Break Even Hit | Net PnL: ₹-110.37
+2026-09-09 13:20:31,200 - INFO - Trade #3: NIFTY24200CE (Qty: 350) | Entry: 2026-08-18 10:17 @ ₹136.79 | Exit: 2026-08-18 10:40 @ ₹143.42 | Reason: Trailing Take Profit Hit | Net PnL: ₹2150.40
+2026-09-09 13:20:31,200 - INFO - Trade #4: NIFTY24200PE (Qty: 400) | Entry: 2026-08-18 10:46 @ ₹134.33 | Exit: 2026-08-18 11:03 @ ₹134.67 | Reason: Break Even Hit | Net PnL: ₹-42.43
+2026-09-09 13:20:31,200 - INFO - Trade #5: NIFTY24200PE (Qty: 450) | Entry: 2026-08-18 11:27 @ ₹123.52 | Exit: 2026-08-18 11:38 @ ₹116.34 | Reason: SL Hit | Net PnL: ₹-3407.22
+2026-09-09 13:20:31,201 - INFO - Trade #6: NIFTY24200PE (Qty: 450) | Entry: 2026-08-18 11:47 @ ₹114.58 | Exit: 2026-08-18 11:50 @ ₹110.14 | Reason: SL Hit | Net PnL: ₹-2167.25
+2026-09-09 13:20:31,201 - INFO - Trade #7: NIFTY24200CE (Qty: 450) | Entry: 2026-08-18 12:40 @ ₹103.39 | Exit: 2026-08-18 12:44 @ ₹99.28 | Reason: SL Hit | Net PnL: ₹-2004.06
+2026-09-09 13:20:31,201 - INFO - Trade #8: NIFTY24200PE (Qty: 250) | Entry: 2026-08-18 13:00 @ ₹172.87 | Exit: 2026-08-18 13:18 @ ₹163.23 | Reason: SL Hit | Net PnL: ₹-2560.10
+2026-09-09 13:20:31,201 - INFO - Trade #9: NIFTY24200PE (Qty: 350) | Entry: 2026-08-18 14:04 @ ₹133.40 | Exit: 2026-08-18 14:14 @ ₹138.21 | Reason: Trailing Take Profit Hit | Net PnL: ₹1518.05
+2026-09-09 13:20:31,201 - INFO - Trade #10: NIFTY24200CE (Qty: 300) | Entry: 2026-08-18 14:27 @ ₹139.82 | Exit: 2026-08-18 14:35 @ ₹142.33 | Reason: Break Even Hit | Net PnL: ₹603.02
+2026-09-09 13:20:31,202 - INFO - Trade #11: NIFTY24200PE (Qty: 250) | Entry: 2026-08-18 14:41 @ ₹175.48 | Exit: 2026-08-18 14:51 @ ₹169.21 | Reason: SL Hit | Net PnL: ₹-1718.41
+2026-09-09 13:20:31,202 - INFO - Trade #12: NIFTY24250CE (Qty: 250) | Entry: 2026-08-18 15:00 @ ₹163.74 | Exit: 2026-08-18 15:06 @ ₹149.64 | Reason: SL Hit | Net PnL: ₹-3666.32
+2026-09-09 13:20:31,202 - INFO - --------------------------
+
+2026-09-09 13:20:31,204 - INFO - Total Trades:    12
+2026-09-09 13:20:31,204 - INFO - Win Rate:        33.33%
+2026-09-09 13:20:31,204 - INFO - Gross PnL:       -9275.22
+2026-09-09 13:20:31,204 - INFO - Total Taxes:     1949.92
+2026-09-09 13:20:31,204 - INFO - ====================================================
+
+2026-09-09 13:20:31,206 - INFO - Calculating indicators...
+2026-09-09 13:20:31,231 - INFO - Starting backtest loop...
+2026-09-09 13:20:31,267 - INFO -
+================= BACKTEST SUMMARY =================
+2026-09-09 13:20:31,267 - INFO - Initial Capital: 46267.41
+2026-09-09 13:20:31,267 - INFO - Final Capital:   48869.97
+2026-09-09 13:20:31,267 - INFO - Net PnL:         2602.56
+2026-09-09 13:20:31,267 - INFO -
+--- DETAILED TRADE LOG ---
+2026-09-09 13:20:31,268 - INFO - Trade #1: NIFTY24050CE (Qty: 400) | Entry: 2026-08-19 09:36 @ ₹108.28 | Exit: 2026-08-19 09:45 @ ₹113.27 | Reason: Trailing Take Profit Hit | Net PnL: ₹1839.74
+2026-09-09 13:20:31,268 - INFO - Trade #2: NIFTY24050PE (Qty: 300) | Entry: 2026-08-19 10:34 @ ₹144.84 | Exit: 2026-08-19 14:35 @ ₹145.31 | Reason: Break Even Hit | Net PnL: ₹-11.59
+2026-09-09 13:20:31,269 - INFO - Trade #3: NIFTY24050CE (Qty: 300) | Entry: 2026-08-19 15:07 @ ₹134.37 | Exit: 2026-08-19 15:15 @ ₹137.45 | Reason: MIS Auto Square Off (15:15) | Net PnL: ₹774.41
+2026-09-09 13:20:31,269 - INFO - --------------------------
+
+2026-09-09 13:20:31,270 - INFO - Total Trades:    3
+2026-09-09 13:20:31,270 - INFO - Win Rate:        66.67%
+2026-09-09 13:20:31,270 - INFO - Gross PnL:       3062.66
+2026-09-09 13:20:31,270 - INFO - Total Taxes:     460.10
+2026-09-09 13:20:31,270 - INFO - ====================================================
+
+2026-09-09 13:20:31,273 - INFO - Calculating indicators...
+2026-09-09 13:20:31,298 - INFO - Starting backtest loop...
+2026-09-09 13:20:31,338 - INFO -
+================= BACKTEST SUMMARY =================
+2026-09-09 13:20:31,338 - INFO - Initial Capital: 48869.97
+2026-09-09 13:20:31,338 - INFO - Final Capital:   50218.96
+2026-09-09 13:20:31,338 - INFO - Net PnL:         1348.99
+2026-09-09 13:20:31,338 - INFO -
+--- DETAILED TRADE LOG ---
+2026-09-09 13:20:31,339 - INFO - Trade #1: NIFTY24200PE (Qty: 250) | Entry: 2026-08-20 10:12 @ ₹165.43 | Exit: 2026-08-20 10:49 @ ₹166.08 | Reason: Break Even Hit | Net PnL: ₹14.25
+2026-09-09 13:20:31,339 - INFO - Trade #2: NIFTY24200CE (Qty: 250) | Entry: 2026-08-20 11:14 @ ₹159.17 | Exit: 2026-08-20 12:26 @ ₹161.30 | Reason: Break Even Hit | Net PnL: ₹386.30
+2026-09-09 13:20:31,339 - INFO - Trade #3: NIFTY24200CE (Qty: 250) | Entry: 2026-08-20 12:35 @ ₹156.34 | Exit: 2026-08-20 12:53 @ ₹176.22 | Reason: Trailing Take Profit Hit | Net PnL: ₹4818.22
+2026-09-09 13:20:31,339 - INFO - Trade #4: NIFTY24250PE (Qty: 400) | Entry: 2026-08-20 13:25 @ ₹126.91 | Exit: 2026-08-20 13:30 @ ₹127.18 | Reason: Break Even Hit | Net PnL: ₹-64.75
+2026-09-09 13:20:31,340 - INFO - Trade #5: NIFTY24250PE (Qty: 300) | Entry: 2026-08-20 13:36 @ ₹166.32 | Exit: 2026-08-20 14:07 @ ₹171.96 | Reason: Trailing Take Profit Hit | Net PnL: ₹1520.34
+2026-09-09 13:20:31,340 - INFO - Trade #6: NIFTY24250CE (Qty: 500) | Entry: 2026-08-20 15:02 @ ₹102.35 | Exit: 2026-08-20 15:06 @ ₹98.28 | Reason: SL Hit | Net PnL: ₹-2204.75
+2026-09-09 13:20:31,340 - INFO - Trade #7: NIFTY24200PE (Qty: 450) | Entry: 2026-08-20 15:11 @ ₹111.36 | Exit: 2026-08-20 15:13 @ ₹104.79 | Reason: SL Hit | Net PnL: ₹-3120.62
+2026-09-09 13:20:31,340 - INFO - --------------------------
+
+2026-09-09 13:20:31,341 - INFO - Total Trades:    7
+2026-09-09 13:20:31,341 - INFO - Win Rate:        57.14%
+2026-09-09 13:20:31,341 - INFO - Gross PnL:       2477.15
+2026-09-09 13:20:31,341 - INFO - Total Taxes:     1128.17
+2026-09-09 13:20:31,342 - INFO - ====================================================
+
+2026-09-09 13:20:31,344 - INFO - Calculating indicators...
+2026-09-09 13:20:31,367 - INFO - Starting backtest loop...
+2026-09-09 13:20:31,401 - INFO -
+================= BACKTEST SUMMARY =================
+2026-09-09 13:20:31,402 - INFO - Initial Capital: 50218.96
+2026-09-09 13:20:31,402 - INFO - Final Capital:   43730.58
+2026-09-09 13:20:31,402 - INFO - Net PnL:         -6488.38
+2026-09-09 13:20:31,402 - INFO -
+--- DETAILED TRADE LOG ---
+2026-09-09 13:20:31,403 - INFO - Trade #1: NIFTY24250CE (Qty: 350) | Entry: 2026-08-21 09:53 @ ₹126.49 | Exit: 2026-08-21 10:08 @ ₹115.37 | Reason: SL Hit | Net PnL: ₹-4040.82
+2026-09-09 13:20:31,403 - INFO - Trade #2: NIFTY24250CE (Qty: 400) | Entry: 2026-08-21 10:29 @ ₹104.54 | Exit: 2026-08-21 11:17 @ ₹104.59 | Reason: Break Even Hit | Net PnL: ₹-132.02
+2026-09-09 13:20:31,403 - INFO - Trade #3: NIFTY24250CE (Qty: 350) | Entry: 2026-08-21 11:46 @ ₹117.95 | Exit: 2026-08-21 11:55 @ ₹113.41 | Reason: SL Hit | Net PnL: ₹-1734.36
+2026-09-09 13:20:31,403 - INFO - Trade #4: NIFTY24250PE (Qty: 250) | Entry: 2026-08-21 12:14 @ ₹168.34 | Exit: 2026-08-21 15:15 @ ₹166.62 | Reason: MIS Auto Square Off (15:15) | Net PnL: ₹-581.17
+2026-09-09 13:20:31,403 - INFO - --------------------------
+
+2026-09-09 13:20:31,404 - INFO - Total Trades:    4
+2026-09-09 13:20:31,404 - INFO - Win Rate:        0.00%
+2026-09-09 13:20:31,405 - INFO - Gross PnL:       -5893.23
+2026-09-09 13:20:31,405 - INFO - Total Taxes:     595.15
+2026-09-09 13:20:31,405 - INFO - ====================================================
+
+2026-09-09 13:20:31,407 - INFO - Calculating indicators...
+2026-09-09 13:20:31,430 - INFO - Starting backtest loop...
+2026-09-09 13:20:31,468 - INFO -
+================= BACKTEST SUMMARY =================
+2026-09-09 13:20:31,468 - INFO - Initial Capital: 43730.58
+2026-09-09 13:20:31,468 - INFO - Final Capital:   49418.43
+2026-09-09 13:20:31,469 - INFO - Net PnL:         5687.85
+2026-09-09 13:20:31,469 - INFO -
+--- DETAILED TRADE LOG ---
+2026-09-09 13:20:31,469 - INFO - Trade #1: NIFTY24250PE (Qty: 200) | Entry: 2026-08-24 09:58 @ ₹178.63 | Exit: 2026-08-24 11:42 @ ₹217.76 | Reason: Trailing Take Profit Hit | Net PnL: ₹7677.33
+2026-09-09 13:20:31,470 - INFO - Trade #2: NIFTY24200PE (Qty: 350) | Entry: 2026-08-24 12:27 @ ₹123.57 | Exit: 2026-08-24 12:46 @ ₹129.07 | Reason: Trailing Take Profit Hit | Net PnL: ₹1766.03
+2026-09-09 13:20:31,470 - INFO - Trade #3: NIFTY24150PE (Qty: 400) | Entry: 2026-08-24 13:05 @ ₹120.00 | Exit: 2026-08-24 13:19 @ ₹113.00 | Reason: SL Hit | Net PnL: ₹-2960.18
+2026-09-09 13:20:31,470 - INFO - Trade #4: NIFTY24150CE (Qty: 350) | Entry: 2026-08-24 13:57 @ ₹121.31 | Exit: 2026-08-24 14:12 @ ₹116.67 | Reason: SL Hit | Net PnL: ₹-1772.53
+2026-09-09 13:20:31,470 - INFO - Trade #5: NIFTY24150CE (Qty: 350) | Entry: 2026-08-24 14:13 @ ₹121.10 | Exit: 2026-08-24 14:39 @ ₹128.48 | Reason: Trailing Take Profit Hit | Net PnL: ₹2427.40
+2026-09-09 13:20:31,471 - INFO - Trade #6: NIFTY24200PE (Qty: 450) | Entry: 2026-08-24 15:11 @ ₹100.76 | Exit: 2026-08-24 15:15 @ ₹97.88 | Reason: MIS Auto Square Off (15:15) | Net PnL: ₹-1450.20
+2026-09-09 13:20:31,471 - INFO - --------------------------
+
+2026-09-09 13:20:31,472 - INFO - Total Trades:    6
+2026-09-09 13:20:31,472 - INFO - Win Rate:        50.00%
+2026-09-09 13:20:31,472 - INFO - Gross PnL:       6616.36
+2026-09-09 13:20:31,472 - INFO - Total Taxes:     928.51
+2026-09-09 13:20:31,472 - INFO - ====================================================
+
+2026-09-09 13:20:31,474 - INFO - Calculating indicators...
+2026-09-09 13:20:31,497 - INFO - Starting backtest loop...
+2026-09-09 13:20:31,540 - INFO -
+================= BACKTEST SUMMARY =================
+2026-09-09 13:20:31,540 - INFO - Initial Capital: 49418.43
+2026-09-09 13:20:31,540 - INFO - Final Capital:   53375.65
+2026-09-09 13:20:31,540 - INFO - Net PnL:         3957.22
+2026-09-09 13:20:31,540 - INFO -
+--- DETAILED TRADE LOG ---
+2026-09-09 13:20:31,541 - INFO - Trade #1: NIFTY24150PE (Qty: 250) | Entry: 2026-08-25 09:52 @ ₹175.85 | Exit: 2026-08-25 10:33 @ ₹176.61 | Reason: Break Even Hit | Net PnL: ₹33.85
+2026-09-09 13:20:31,542 - INFO - Trade #2: NIFTY24150PE (Qty: 400) | Entry: 2026-08-25 10:46 @ ₹115.62 | Exit: 2026-08-25 10:47 @ ₹111.15 | Reason: SL Hit | Net PnL: ₹-1945.21
+2026-09-09 13:20:31,542 - INFO - Trade #3: NIFTY24150CE (Qty: 300) | Entry: 2026-08-25 10:51 @ ₹133.17 | Exit: 2026-08-25 11:02 @ ₹121.52 | Reason: SL Hit | Net PnL: ₹-3635.32
+2026-09-09 13:20:31,542 - INFO - Trade #4: NIFTY24150PE (Qty: 400) | Entry: 2026-08-25 11:33 @ ₹98.43 | Exit: 2026-08-25 11:39 @ ₹100.08 | Reason: Break Even Hit | Net PnL: ₹514.28
+2026-09-09 13:20:31,542 - INFO - Trade #5: NIFTY24150CE (Qty: 200) | Entry: 2026-08-25 11:48 @ ₹170.06 | Exit: 2026-08-25 11:59 @ ₹188.86 | Reason: Trailing Take Profit Hit | Net PnL: ₹3622.18
+2026-09-09 13:20:31,543 - INFO - Trade #6: NIFTY24150PE (Qty: 250) | Entry: 2026-08-25 13:01 @ ₹159.33 | Exit: 2026-08-25 13:53 @ ₹150.36 | Reason: SL Hit | Net PnL: ₹-2382.77
+2026-09-09 13:20:31,543 - INFO - Trade #7: NIFTY24200CE (Qty: 200) | Entry: 2026-08-25 13:54 @ ₹177.82 | Exit: 2026-08-25 13:56 @ ₹167.93 | Reason: SL Hit | Net PnL: ₹-2109.36
+2026-09-09 13:20:31,543 - INFO - Trade #8: NIFTY24150CE (Qty: 250) | Entry: 2026-08-25 14:27 @ ₹163.82 | Exit: 2026-08-25 14:34 @ ₹175.63 | Reason: Trailing Take Profit Hit | Net PnL: ₹2799.68
+2026-09-09 13:20:31,543 - INFO - Trade #9: NIFTY24200CE (Qty: 350) | Entry: 2026-08-25 14:48 @ ₹124.46 | Exit: 2026-08-25 15:15 @ ₹145.11 | Reason: MIS Auto Square Off (15:15) | Net PnL: ₹7059.89
+2026-09-09 13:20:31,543 - INFO - --------------------------
+
+2026-09-09 13:20:31,545 - INFO - Total Trades:    9
+2026-09-09 13:20:31,545 - INFO - Win Rate:        55.56%
+2026-09-09 13:20:31,545 - INFO - Gross PnL:       5286.59
+2026-09-09 13:20:31,545 - INFO - Total Taxes:     1329.37
+2026-09-09 13:20:31,545 - INFO - ====================================================
+
+2026-09-09 13:20:31,547 - INFO - Calculating indicators...
+2026-09-09 13:20:31,573 - INFO - Starting backtest loop...
+2026-09-09 13:20:31,617 - INFO -
+================= BACKTEST SUMMARY =================
+2026-09-09 13:20:31,617 - INFO - Initial Capital: 53375.65
+2026-09-09 13:20:31,617 - INFO - Final Capital:   55948.92
+2026-09-09 13:20:31,617 - INFO - Net PnL:         2573.27
+2026-09-09 13:20:31,617 - INFO -
+--- DETAILED TRADE LOG ---
+2026-09-09 13:20:31,618 - INFO - Trade #1: NIFTY24350PE (Qty: 400) | Entry: 2026-08-26 09:40 @ ₹119.58 | Exit: 2026-08-26 09:43 @ ₹115.00 | Reason: SL Hit | Net PnL: ₹-1996.59
+2026-09-09 13:20:31,618 - INFO - Trade #2: NIFTY24350PE (Qty: 300) | Entry: 2026-08-26 10:07 @ ₹157.81 | Exit: 2026-08-26 10:30 @ ₹174.31 | Reason: Trailing Take Profit Hit | Net PnL: ₹4777.97
+2026-09-09 13:20:31,618 - INFO - Trade #3: NIFTY24300CE (Qty: 400) | Entry: 2026-08-26 11:04 @ ₹129.24 | Exit: 2026-08-26 11:16 @ ₹134.45 | Reason: Trailing Take Profit Hit | Net PnL: ₹1906.24
+2026-09-09 13:20:31,619 - INFO - Trade #4: NIFTY24300CE (Qty: 350) | Entry: 2026-08-26 11:18 @ ₹146.40 | Exit: 2026-08-26 11:33 @ ₹141.01 | Reason: SL Hit | Net PnL: ₹-2057.09
+2026-09-09 13:20:31,619 - INFO - Trade #5: NIFTY24300PE (Qty: 500) | Entry: 2026-08-26 11:53 @ ₹98.70 | Exit: 2026-08-26 12:14 @ ₹106.23 | Reason: Trailing Take Profit Hit | Net PnL: ₹3591.39
+2026-09-09 13:20:31,619 - INFO - Trade #6: NIFTY24250CE (Qty: 500) | Entry: 2026-08-26 13:02 @ ₹103.33 | Exit: 2026-08-26 13:08 @ ₹107.03 | Reason: Trailing Take Profit Hit | Net PnL: ₹1670.05
+2026-09-09 13:20:31,619 - INFO - Trade #7: NIFTY24250CE (Qty: 400) | Entry: 2026-08-26 13:14 @ ₹143.55 | Exit: 2026-08-26 13:17 @ ₹138.25 | Reason: SL Hit | Net PnL: ₹-2307.29
+2026-09-09 13:20:31,619 - INFO - Trade #8: NIFTY24300PE (Qty: 350) | Entry: 2026-08-26 14:13 @ ₹146.21 | Exit: 2026-08-26 14:31 @ ₹146.67 | Reason: Break Even Hit | Net PnL: ₹-11.76
+2026-09-09 13:20:31,620 - INFO - Trade #9: NIFTY24300PE (Qty: 300) | Entry: 2026-08-26 14:45 @ ₹162.00 | Exit: 2026-08-26 14:53 @ ₹156.14 | Reason: SL Hit | Net PnL: ₹-1921.59
+2026-09-09 13:20:31,620 - INFO - Trade #10: NIFTY24250PE (Qty: 450) | Entry: 2026-08-26 15:06 @ ₹109.31 | Exit: 2026-08-26 15:15 @ ₹107.29 | Reason: MIS Auto Square Off (15:15) | Net PnL: ₹-1078.05
+2026-09-09 13:20:31,620 - INFO - --------------------------
+
+2026-09-09 13:20:31,621 - INFO - Total Trades:    10
+2026-09-09 13:20:31,621 - INFO - Win Rate:        40.00%
+2026-09-09 13:20:31,621 - INFO - Gross PnL:       4297.75
+2026-09-09 13:20:31,621 - INFO - Total Taxes:     1724.48
+2026-09-09 13:20:31,621 - INFO - ====================================================
+
+2026-09-09 13:20:31,624 - INFO - Calculating indicators...
+2026-09-09 13:20:31,646 - INFO - Starting backtest loop...
+2026-09-09 13:20:31,683 - INFO -
+================= BACKTEST SUMMARY =================
+2026-09-09 13:20:31,683 - INFO - Initial Capital: 55948.92
+2026-09-09 13:20:31,683 - INFO - Final Capital:   48009.05
+2026-09-09 13:20:31,684 - INFO - Net PnL:         -7939.87
+2026-09-09 13:20:31,684 - INFO -
+--- DETAILED TRADE LOG ---
+2026-09-09 13:20:31,684 - INFO - Trade #1: NIFTY24200PE (Qty: 350) | Entry: 2026-08-27 10:00 @ ₹141.20 | Exit: 2026-08-27 12:37 @ ₹151.58 | Reason: Break Even Hit | Net PnL: ₹3458.27
+2026-09-09 13:20:31,685 - INFO - Trade #2: NIFTY24200CE (Qty: 450) | Entry: 2026-08-27 13:12 @ ₹114.24 | Exit: 2026-08-27 13:27 @ ₹107.53 | Reason: SL Hit | Net PnL: ₹-3188.72
+2026-09-09 13:20:31,685 - INFO - Trade #3: NIFTY24200CE (Qty: 500) | Entry: 2026-08-27 13:28 @ ₹105.60 | Exit: 2026-08-27 13:31 @ ₹101.43 | Reason: SL Hit | Net PnL: ₹-2257.29
+2026-09-09 13:20:31,685 - INFO - Trade #4: NIFTY24150CE (Qty: 350) | Entry: 2026-08-27 13:46 @ ₹132.35 | Exit: 2026-08-27 13:48 @ ₹127.38 | Reason: SL Hit | Net PnL: ₹-1897.72
+2026-09-09 13:20:31,685 - INFO - Trade #5: NIFTY24150PE (Qty: 400) | Entry: 2026-08-27 13:58 @ ₹111.32 | Exit: 2026-08-27 14:26 @ ₹101.42 | Reason: SL Hit | Net PnL: ₹-4111.93
+2026-09-09 13:20:31,685 - INFO - Trade #6: NIFTY24150PE (Qty: 350) | Entry: 2026-08-27 15:01 @ ₹116.40 | Exit: 2026-08-27 15:07 @ ₹122.16 | Reason: Trailing Take Profit Hit | Net PnL: ₹1865.14
+2026-09-09 13:20:31,686 - INFO - Trade #7: NIFTY24150CE (Qty: 350) | Entry: 2026-08-27 15:09 @ ₹124.41 | Exit: 2026-08-27 15:14 @ ₹119.67 | Reason: SL Hit | Net PnL: ₹-1807.62
+2026-09-09 13:20:31,686 - INFO - --------------------------
+
+2026-09-09 13:20:31,687 - INFO - Total Trades:    7
+2026-09-09 13:20:31,687 - INFO - Win Rate:        28.57%
+2026-09-09 13:20:31,687 - INFO - Gross PnL:       -6812.60
+2026-09-09 13:20:31,687 - INFO - Total Taxes:     1127.27
+2026-09-09 13:20:31,687 - INFO - ====================================================
+
+2026-09-09 13:20:31,689 - INFO - Calculating indicators...
+2026-09-09 13:20:31,712 - INFO - Starting backtest loop...
+2026-09-09 13:20:31,747 - INFO -
+================= BACKTEST SUMMARY =================
+2026-09-09 13:20:31,747 - INFO - Initial Capital: 48009.05
+2026-09-09 13:20:31,747 - INFO - Final Capital:   36958.45
+2026-09-09 13:20:31,747 - INFO - Net PnL:         -11050.59
+2026-09-09 13:20:31,747 - INFO -
+--- DETAILED TRADE LOG ---
+2026-09-09 13:20:31,748 - INFO - Trade #1: NIFTY24150CE (Qty: 350) | Entry: 2026-08-28 09:43 @ ₹119.59 | Exit: 2026-08-28 09:52 @ ₹109.02 | Reason: SL Hit | Net PnL: ₹-3841.85
+2026-09-09 13:20:31,748 - INFO - Trade #2: NIFTY24200CE (Qty: 350) | Entry: 2026-08-28 10:16 @ ₹105.12 | Exit: 2026-08-28 10:19 @ ₹98.87 | Reason: SL Hit | Net PnL: ₹-2323.40
+2026-09-09 13:20:31,748 - INFO - Trade #3: NIFTY24150CE (Qty: 350) | Entry: 2026-08-28 11:07 @ ₹105.20 | Exit: 2026-08-28 11:09 @ ₹101.04 | Reason: SL Hit | Net PnL: ₹-1589.77
+2026-09-09 13:20:31,748 - INFO - Trade #4: NIFTY24150CE (Qty: 300) | Entry: 2026-08-28 11:22 @ ₹113.91 | Exit: 2026-08-28 11:26 @ ₹109.49 | Reason: SL Hit | Net PnL: ₹-1454.09
+2026-09-09 13:20:31,748 - INFO - Trade #5: NIFTY24150PE (Qty: 350) | Entry: 2026-08-28 11:28 @ ₹101.77 | Exit: 2026-08-28 11:38 @ ₹113.05 | Reason: Trailing Take Profit Hit | Net PnL: ₹3803.23
+2026-09-09 13:20:31,749 - INFO - Trade #6: NIFTY24100PE (Qty: 250) | Entry: 2026-08-28 11:56 @ ₹150.16 | Exit: 2026-08-28 13:22 @ ₹137.15 | Reason: SL Hit | Net PnL: ₹-3386.83
+2026-09-09 13:20:31,749 - INFO - Trade #7: NIFTY24100PE (Qty: 300) | Entry: 2026-08-28 13:27 @ ₹121.65 | Exit: 2026-08-28 13:40 @ ₹114.57 | Reason: SL Hit | Net PnL: ₹-2257.89
+2026-09-09 13:20:31,749 - INFO - --------------------------
+
+2026-09-09 13:20:31,750 - INFO - Total Trades:    7
+2026-09-09 13:20:31,750 - INFO - Win Rate:        14.29%
+2026-09-09 13:20:31,750 - INFO - Gross PnL:       -10100.40
+2026-09-09 13:20:31,750 - INFO - Total Taxes:     950.20
+2026-09-09 13:20:31,750 - INFO - ====================================================
+
+2026-09-09 13:20:31,752 - INFO - Calculating indicators...
+2026-09-09 13:20:31,776 - INFO - Starting backtest loop...
+2026-09-09 13:20:31,813 - INFO -
+================= BACKTEST SUMMARY =================
+2026-09-09 13:20:31,813 - INFO - Initial Capital: 36958.45
+2026-09-09 13:20:31,813 - INFO - Final Capital:   33804.65
+2026-09-09 13:20:31,813 - INFO - Net PnL:         -3153.80
+2026-09-09 13:20:31,813 - INFO -
+--- DETAILED TRADE LOG ---
+2026-09-09 13:20:31,814 - INFO - Trade #1: NIFTY24050CE (Qty: 250) | Entry: 2026-08-31 09:45 @ ₹120.63 | Exit: 2026-08-31 09:48 @ ₹120.84 | Reason: Break Even Hit | Net PnL: ₹-69.97
+2026-09-09 13:20:31,814 - INFO - Trade #2: NIFTY24000PE (Qty: 250) | Entry: 2026-08-31 09:56 @ ₹124.96 | Exit: 2026-08-31 10:00 @ ₹117.71 | Reason: SL Hit | Net PnL: ₹-1932.80
+2026-09-09 13:20:31,814 - INFO - Trade #3: NIFTY24000CE (Qty: 200) | Entry: 2026-08-31 10:11 @ ₹152.77 | Exit: 2026-08-31 10:32 @ ₹155.14 | Reason: Break Even Hit | Net PnL: ₹350.93
+2026-09-09 13:20:31,815 - INFO - Trade #4: NIFTY24000PE (Qty: 150) | Entry: 2026-08-31 10:37 @ ₹170.15 | Exit: 2026-08-31 11:40 @ ₹160.65 | Reason: SL Hit | Net PnL: ₹-1533.57
+2026-09-09 13:20:31,815 - INFO - Trade #5: NIFTY24050CE (Qty: 150) | Entry: 2026-08-31 11:53 @ ₹161.04 | Exit: 2026-08-31 13:55 @ ₹166.23 | Reason: Break Even Hit | Net PnL: ₹669.35
+2026-09-09 13:20:31,815 - INFO - Trade #6: NIFTY24000PE (Qty: 200) | Entry: 2026-08-31 14:05 @ ₹158.28 | Exit: 2026-08-31 14:40 @ ₹144.61 | Reason: SL Hit | Net PnL: ₹-2852.52
+2026-09-09 13:20:31,815 - INFO - Trade #7: NIFTY24050CE (Qty: 200) | Entry: 2026-08-31 14:42 @ ₹138.03 | Exit: 2026-08-31 14:48 @ ₹149.70 | Reason: Break Even Hit | Net PnL: ₹2214.78
+2026-09-09 13:20:31,815 - INFO - --------------------------
+
+2026-09-09 13:20:31,816 - INFO - Total Trades:    7
+2026-09-09 13:20:31,817 - INFO - Win Rate:        42.86%
+2026-09-09 13:20:31,817 - INFO - Gross PnL:       -2333.10
+2026-09-09 13:20:31,817 - INFO - Total Taxes:     820.70
+2026-09-09 13:20:31,817 - INFO - ====================================================
+
+Fetching Nifty data from 2026-08-01 to 2026-08-31 in chunks...
+Downloading chunk: 2026-08-01 to 2026-08-08...
+Downloading chunk: 2026-08-08 to 2026-08-15...
+Downloading chunk: 2026-08-15 to 2026-08-22...
+Downloading chunk: 2026-08-22 to 2026-08-29...
+Downloading chunk: 2026-08-29 to 2026-09-01...
+
+🚀 STARTING MULTI-DAY COMPOUNDING BACKTEST 🚀
+Initial Starting Capital: ₹50000.00
+
+
+==================================================
+📅 Trading Day: 2026-08-17
+💰 Starting Capital Today: ₹50000.00
+==================================================
+
+==================================================
+📅 Trading Day: 2026-08-18
+💰 Starting Capital Today: ₹57492.55
+==================================================
+
+==================================================
+📅 Trading Day: 2026-08-19
+💰 Starting Capital Today: ₹46267.41
+==================================================
+
+==================================================
+📅 Trading Day: 2026-08-20
+💰 Starting Capital Today: ₹48869.97
+==================================================
+
+==================================================
+📅 Trading Day: 2026-08-21
+💰 Starting Capital Today: ₹50218.96
+==================================================
+
+==================================================
+📅 Trading Day: 2026-08-24
+💰 Starting Capital Today: ₹43730.58
+==================================================
+
+==================================================
+📅 Trading Day: 2026-08-25
+💰 Starting Capital Today: ₹49418.43
+==================================================
+
+==================================================
+📅 Trading Day: 2026-08-26
+💰 Starting Capital Today: ₹53375.65
+==================================================
+
+==================================================
+📅 Trading Day: 2026-08-27
+💰 Starting Capital Today: ₹55948.92
+==================================================
+
+==================================================
+📅 Trading Day: 2026-08-28
+💰 Starting Capital Today: ₹48009.05
+==================================================
+
+==================================================
+📅 Trading Day: 2026-08-31
+💰 Starting Capital Today: ₹36958.45
+==================================================
+
+**************************************************
+🏁 FINAL COMPOUNDING RESULTS 🏁
+Total Return: -32.39%
+Final Capital: ₹33804.65
+**************************************************

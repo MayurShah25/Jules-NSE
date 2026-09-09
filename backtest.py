@@ -11,7 +11,6 @@ SYMBOL = "NIFTY"
 TIMEFRAME = "1min"
 QTY = 500  # 10 Nifty Lots to overcome flat brokerage fees
 
-MAX_LOSS_PER_DAY = -50000  # Scaled up kill switch for larger quantity
 # Dynamic Risk variables will be calculated per trade based on ADX
 
 EMA_PERIOD = 21
@@ -220,6 +219,12 @@ class Backtester:
                 self.daily_pnl = 0.0
                 self.kill_switch_active = False
 
+                # Dynamic Daily Kill Switch
+                if self.capital < 100000:
+                    self.max_loss_limit = -10000.0
+                else:
+                    self.max_loss_limit = -15000.0
+
             # Intraday Market Hours (09:15 to 15:15)
             # Brokers enforce MIS square-off around 3:15 PM - 3:20 PM. We use 15:15 to prevent overnight holds.
             if current_time >= time(15, 15):
@@ -242,7 +247,7 @@ class Backtester:
             if self.kill_switch_active:
                 continue
 
-            if self.daily_pnl <= MAX_LOSS_PER_DAY:
+            if self.daily_pnl <= self.max_loss_limit:
                 self.kill_switch_active = True
                 if self.in_position:
                     self._exit_trade(row, self.entry_price, "Kill Switch Hit")

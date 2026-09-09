@@ -33,5 +33,3 @@ def print_summary(filename, month_name):
         print("\nFINAL COMPOUNDING RESULTS")
         print(f"Total Return: {final_return.group(1)}")
         print(f"Final Capital: ₹{float(final_return.group(2)):,.2f}")
-
-print_summary('august_hybrid_backtest.log', 'August')
