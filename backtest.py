@@ -94,11 +94,10 @@ class Backtester:
         df['Cum_Vol_x_Typ'] = df.groupby('Date')['Vol_x_Typ'].cumsum()
         df['VWAP'] = df['Cum_Vol_x_Typ'] / df['Cum_Vol']
 
-        # Calculate Rolling 15-Minute High/Low (15 candles on 1min chart) to avoid fakeouts
-        # Shift by 1 to exclude the current candle
-        ROLLING_PERIOD = 15
-        df['Rolling_High'] = df['high'].shift(1).rolling(window=ROLLING_PERIOD).max()
-        df['Rolling_Low'] = df['low'].shift(1).rolling(window=ROLLING_PERIOD).min()
+        # Calculate Rolling 30-Minute High/Low (30 candles on 1min chart)
+        # Calculate per day so we don't carry yesterday's levels into a gap open
+        df['Rolling_High'] = df.groupby(df.index.date)['high'].shift(1).rolling(window=30, min_periods=1).max()
+        df['Rolling_Low'] = df.groupby(df.index.date)['low'].shift(1).rolling(window=30, min_periods=1).min()
 
         return df.dropna()
 
@@ -143,12 +142,12 @@ class Backtester:
         if adx_value >= 30:
             # Very Strong trend identified: Widen risk tolerance and aim for max profitability
             self.trade_sl_pct = 0.08      # 8% Stop Loss (give it room to breathe)
-            self.trade_target_pct = 0.30  # 30% Take Profit
+            self.trade_target_pct = 0.20  # 20% Take Profit
             self.trade_trailing_pct = 0.05 # 5% trailing (let winners run)
         else:
             # Moderate trend identified: Balanced scalping settings
             self.trade_sl_pct = 0.05      # 5% Stop Loss (cut fast)
-            self.trade_target_pct = 0.15  # 15% Take Profit (1:3 Risk/Reward)
+            self.trade_target_pct = 0.10  # 10% Take Profit (1:3 Risk/Reward)
             self.trade_trailing_pct = 0.03 # 3% tight trailing
 
         self.current_sl = self.entry_price * (1 - self.trade_sl_pct)
@@ -280,6 +279,12 @@ class Backtester:
                     # Set SL to slightly above entry to cover minimum slippage/fees
                     self.current_sl = self.entry_price * 1.01
 
+                # 3. Continuous Step Trailing (Between Break-Even and Target)
+                elif self.breakeven_reached and not self.target_reached:
+                    potential_new_sl = self.max_opt_price_seen * (1 - self.trade_sl_pct)
+                    if potential_new_sl > self.current_sl:
+                        self.current_sl = potential_new_sl
+
             # Look for entries if not in position
             else:
                 if row[f'ADX_{ADX_PERIOD}'] < ADX_THRESHOLD:
@@ -299,6 +304,20 @@ class Backtester:
                 # We need valid rolling levels and indicators to trade
                 if pd.isna(r_high) or pd.isna(r_low) or pd.isna(rsi) or pd.isna(adx_slope):
                     continue
+
+                # Chop Killer: Ensure price is expanding away from VWAP
+                vwap_distance_pct = abs(close - vwap) / vwap
+
+                # Determine if we are in the market open period (first 45 mins)
+                # We bypass the VWAP chop filter here so we don't miss gap-down momentum
+                market_open_time = datetime.combine(date, time(9, 15))
+                if row.name.tzinfo is not None:
+                    market_open_time = market_open_time.replace(tzinfo=row.name.tzinfo)
+                time_since_open = row.name - market_open_time
+                is_market_open_period = time_since_open.total_seconds() <= 45 * 60
+
+                if vwap_distance_pct <= 0.0005 and not is_market_open_period:
+                    continue # Price too close to VWAP (Chop Zone)
 
                 # 1. Breakout Strategy (Momentum)
                 # Bullish Breakout of 30-Min High: Price above VWAP/EMA AND RSI > 50 (Bullish control)
