@@ -234,9 +234,22 @@ class ScalpingStrategy:
         # Assuming 'df' has columns: datetime, open, high, low, close, volume
         # 1. Rolling 30-Minute High / Low (30 candles on 1min chart)
         # Exclude the current live, unclosed candle (-1)
-        rolling_data = df.iloc[-31:-1]
-        rolling_high = rolling_data['high'].max()
-        rolling_low = rolling_data['low'].min()
+        # Ensure we don't mix previous day's data during the first 30 minutes of a gap open
+        today_date = datetime.now().date()
+        today_mask = df.index.date == today_date
+        today_df = df[today_mask]
+
+        if len(today_df) > 1:
+            # We have at least some closed candles today
+            rolling_data = today_df.iloc[-31:-1]
+            rolling_high = rolling_data['high'].max()
+            rolling_low = rolling_data['low'].min()
+        else:
+            # Not enough data for today yet (e.g. first candle of the day is forming)
+            # Fallback to previous 30 candles, though trades are unlikely this early
+            rolling_data = df.iloc[-31:-1]
+            rolling_high = rolling_data['high'].max()
+            rolling_low = rolling_data['low'].min()
 
         # 2. Indicators (using ta)
         df[f'EMA_{EMA_PERIOD}'] = ta.trend.EMAIndicator(close=df['close'], window=EMA_PERIOD).ema_indicator()
@@ -248,10 +261,6 @@ class ScalpingStrategy:
         df[f'RSI_{RSI_PERIOD}'] = ta.momentum.RSIIndicator(close=df['close'], window=RSI_PERIOD).rsi()
 
         # Simplified Intraday VWAP / Fallback
-        # Extract only today's data for VWAP (since VWAP resets daily)
-        today_date = datetime.now().date()
-        today_mask = df.index.date == today_date
-
         # We must calculate VWAP only on today's data slice
         df['Typical_Price'] = (df['high'] + df['low'] + df['close']) / 3
 
@@ -271,6 +280,7 @@ class ScalpingStrategy:
             return None
 
         return {
+            'timestamp': df.index[-1],
             'close': latest_data['close'],
             'open': latest_data['open'],
             'high': latest_data['high'],
@@ -387,6 +397,7 @@ class ScalpingStrategy:
         if not market_data:
             return
 
+        timestamp = market_data['timestamp']
         close_price = market_data['close']
         open_price = market_data['open']
         high_price = market_data['high']
@@ -407,11 +418,16 @@ class ScalpingStrategy:
         # Chop Killer: Ensure price is expanding away from VWAP
         vwap_distance_pct = abs(close_price - vwap) / vwap
 
+        # Determine if we are in the market open period (first 45 mins)
+        market_open_time = timestamp.replace(hour=9, minute=15, second=0, microsecond=0)
+        time_since_open = timestamp - market_open_time
+        is_market_open_period = time_since_open.total_seconds() <= 45 * 60
+
         # 1. Sideways Market Filter
         if adx < ADX_THRESHOLD:
             current_reason = f"Sideways Market (ADX {adx:.2f} < {ADX_THRESHOLD})"
 
-        elif vwap_distance_pct <= 0.0005:
+        elif vwap_distance_pct <= 0.0005 and not is_market_open_period:
             current_reason = f"Price too close to VWAP (Chop Zone)"
 
         else:
