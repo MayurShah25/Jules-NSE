@@ -262,6 +262,7 @@ class ScalpingStrategy:
         self.current_sl = 0.0
         self.option_symbol = ""
         self.last_heartbeat_time = datetime.now()
+        self.last_pnl_heartbeat_time = datetime.now()
         self.last_fetch_time = None
         self.cached_market_data = None
 
@@ -397,6 +398,7 @@ class ScalpingStrategy:
         self.max_opt_price_seen = self.entry_price
         self.target_reached = False
         self.breakeven_reached = False
+        self.last_pnl_heartbeat_time = datetime.now()
         logger.info(f"Entered {opt_type} at {self.entry_price}. Initial SL: {self.current_sl}")
 
     def exit_trade(self, reason):
@@ -418,6 +420,13 @@ class ScalpingStrategy:
 
         if current_opt_price > self.max_opt_price_seen:
             self.max_opt_price_seen = current_opt_price
+
+        # Live PNL Logging
+        now = datetime.now()
+        if (now - self.last_pnl_heartbeat_time).total_seconds() >= 30: # Log every 30 seconds
+            live_pnl = (current_opt_price - self.entry_price) * QTY
+            logger.info(f"[LIVE PNL] {self.option_symbol} | LTP: {current_opt_price:.2f} | PNL: ₹{live_pnl:.2f} | SL: {self.current_sl:.2f}")
+            self.last_pnl_heartbeat_time = now
 
         # 1. Check SL / TTP Hit
         if current_opt_price <= self.current_sl:
