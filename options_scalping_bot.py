@@ -9,11 +9,9 @@ from datetime import datetime, timedelta
 # ==========================================
 SYMBOL = "NIFTY"
 TIMEFRAME = "1min"  # 1-minute timeframe for hyper-scalping
-QTY = 500  # 10 Nifty lots to increase net profitability against flat fees
 
 # Risk Management
-MAX_LOSS_PER_DAY = -50000  # Kill switch limit scaled for 10 lots
-# Risk metrics are now calculated dynamically per trade
+# Quantity and Max Loss are calculated dynamically based on live broker balance
 
 # Trend & Momentum Filters
 EMA_PERIOD = 21
@@ -393,16 +391,51 @@ class ScalpingStrategy:
             logger.error("Trade Aborted: Could not determine valid option symbol. Make sure Kite API is connected and active.")
             return
 
+        # Dynamic Quantity Calculation based on Live Balance (Max 10 Lots)
+        live_balance = self.broker.get_balance()
+        # Use 95% of available capital
+        max_investment = live_balance * 0.95
+
+        # Estimate premium using ~0.5 delta assumption for ATM (just for initial sizing if fetching fails)
+        # Nifty Lot Size is 50
+        estimated_premium = (spot_price * 0.005)
+
+        # Try to get the actual live premium first to size perfectly
+        try:
+            live_premium = self.broker.get_ltp(self.option_symbol)
+            if live_premium > 0:
+                estimated_premium = live_premium
+        except Exception:
+            pass
+
+        calculated_lots = int(max_investment / (estimated_premium * 50))
+        calculated_lots = min(calculated_lots, 10) # Cap at 10 lots (500 qty)
+
+        if calculated_lots <= 0:
+            logger.error(f"Trade Aborted: Insufficient funds to buy even 1 lot. Balance: {live_balance}")
+            return
+
+        trade_qty = calculated_lots * 50
+
         # Place Market Order
-        self.broker.place_order(self.option_symbol, "BUY", QTY)
+        order_id = self.broker.place_order(self.option_symbol, "BUY", trade_qty)
+
+        if not order_id:
+            logger.error("Trade Aborted: Order placement failed via broker API.")
+            return
+
+        # WE ARE NOW IN A LIVE POSITION
+        self.in_position = True
+        self.current_position = opt_type
+        self.current_qty = trade_qty
 
         try:
-            # Fetch Entry Price (Assuming immediate fill for simplicity)
+            # Fetch Entry Price
             self.entry_price = self.broker.get_ltp(self.option_symbol)
         except Exception as e:
-            logger.error(f"Trade Aborted: Failed to fetch entry price after placing order - {e}")
-            self.in_position = False
-            return
+            logger.error(f"Failed to fetch exact entry price after fill - {e}. Falling back to estimated premium.")
+            # DO NOT ABORT OR SET IN_POSITION TO FALSE! We already bought it!
+            self.entry_price = estimated_premium
 
         # Dynamic Risk Allocation based on trend strength
         if adx_value >= 30:
@@ -435,7 +468,8 @@ class ScalpingStrategy:
 
     def exit_trade(self, reason):
         """Exits current position."""
-        self.broker.place_order(self.option_symbol, "SELL", QTY)
+        trade_qty = getattr(self, 'current_qty', 500)
+        self.broker.place_order(self.option_symbol, "SELL", trade_qty)
 
         try:
             exit_price = self.broker.get_ltp(self.option_symbol)
@@ -443,7 +477,7 @@ class ScalpingStrategy:
             # Fallback to current SL if fetch fails during exit
             exit_price = self.current_sl
 
-        realized_pnl = (exit_price - self.entry_price) * QTY
+        realized_pnl = (exit_price - self.entry_price) * trade_qty
         self.daily_realized_pnl += realized_pnl
 
         logger.info(f"Exited position {self.current_position} at {exit_price:.2f}. Reason: {reason}")
@@ -468,7 +502,7 @@ class ScalpingStrategy:
         # Live PNL Logging
         now = datetime.now()
         if (now - self.last_pnl_heartbeat_time).total_seconds() >= 30: # Log every 30 seconds
-            live_pnl = (current_opt_price - self.entry_price) * QTY
+            live_pnl = (current_opt_price - self.entry_price) * getattr(self, 'current_qty', 500)
             logger.info(f"[LIVE PNL] {self.option_symbol} | LTP: {current_opt_price:.2f} | PNL: ₹{live_pnl:.2f} | SL: {self.current_sl:.2f}")
             self.last_pnl_heartbeat_time = now
 
@@ -650,7 +684,6 @@ if __name__ == "__main__":
                     logger.warning("MIS Square Off Time Reached (15:15). Closing all open intraday positions!")
                     bot.exit_trade("MIS Auto Square Off (15:15)")
 
-                logger.info("Market is beyond intraday trading hours. Bot is idling.")
                 # If market is fully closed, exit loop
                 if now > datetime.strptime("15:30", "%H:%M").time():
                     logger.info("Market Closed for the day. Exiting.")

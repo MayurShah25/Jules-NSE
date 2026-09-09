@@ -247,10 +247,8 @@ class Backtester:
             if self.kill_switch_active:
                 continue
 
-            if self.daily_pnl <= self.max_loss_limit:
+            if not self.in_position and self.daily_pnl <= self.max_loss_limit:
                 self.kill_switch_active = True
-                if self.in_position:
-                    self._exit_trade(row, self.entry_price, "Kill Switch Hit")
                 continue
 
             # Manage open position
@@ -263,6 +261,13 @@ class Backtester:
                     opt_price_change = (self.underlying_entry_price - row['close']) * 0.5
 
                 current_opt_price = max(1.0, self.entry_price + opt_price_change) # options don't go below ~0
+
+                # Floating PNL Kill Switch Check
+                floating_pnl = (current_opt_price - self.entry_price) * self.current_qty
+                if (self.daily_pnl + floating_pnl) <= self.max_loss_limit:
+                    self.kill_switch_active = True
+                    self._exit_trade(row, current_opt_price, "Kill Switch Hit")
+                    continue
 
                 # Track max price seen for Trailing Take Profit
                 if current_opt_price > self.max_opt_price_seen:
