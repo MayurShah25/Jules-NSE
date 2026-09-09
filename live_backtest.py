@@ -3,9 +3,10 @@ import pandas as pd
 from datetime import datetime
 import backtest
 
-# Fetch today's Nifty 50 data (1-minute intervals)
-print("Fetching today's live Nifty data...")
-nifty = yf.download('^NSEI', period='1d', interval='1m', progress=False)
+# Fetch 5 days of Nifty 50 data to "warm up" the indicators
+# (e.g. 21-EMA and 30-min rolling breakouts need prior data if run right at market open)
+print("Fetching live Nifty data to warm up indicators...")
+nifty = yf.download('^NSEI', period='5d', interval='1m', progress=False)
 
 if nifty.empty:
     print("Market might be closed or data unavailable yet.")
@@ -29,8 +30,27 @@ else:
         np.random.seed(42)
         nifty['volume'] = np.random.randint(10000, 150000, size=len(nifty))
 
-    print(f"Loaded {len(nifty)} candles. Starting backtest on real today's data...")
+    # We only want to execute trades for TODAY, but we pass the full 5-day dataset
+    # to the Backtester so the indicators (like 30-min rolling highs) calculate correctly.
+    # To do this, we intercept the 'current_date' logic in Backtester by slicing the execution.
 
-    # Initialize and run our exact backtester logic on the live data
-    tester = backtest.Backtester(nifty)
-    tester.run()
+    today_date = nifty.index[-1].date()
+    today_candles = len(nifty[nifty.index.date == today_date])
+
+    print(f"Loaded {len(nifty)} total candles. Today has {today_candles} candles.")
+    if today_candles < 2:
+        print("Market just opened. Waiting for more data...")
+    else:
+        print("Starting backtest on today's live data...")
+        # Initialize and run our exact backtester logic on the live data
+        tester = backtest.Backtester(nifty)
+
+        # We temporarily inject a filter into the tester so it only takes trades TODAY
+        # We override the _execute_trade method dynamically for this specific script:
+        original_execute = tester._execute_trade
+        def proxy_execute_trade(row, opt_type):
+            if row.name.date() == today_date:
+                original_execute(row, opt_type)
+        tester._execute_trade = proxy_execute_trade
+
+        tester.run()

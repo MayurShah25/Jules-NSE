@@ -228,7 +228,7 @@ class ScalpingStrategy:
     def fetch_and_calculate_indicators(self):
         """Fetches data and calculates Rolling High/Low, VWAP, EMA, ADX."""
         df = self.broker.get_historical_data(SYMBOL, TIMEFRAME)
-        if df is None or len(df) < 20:
+        if df is None or len(df) < 50:
             return None
 
         # Assuming 'df' has columns: datetime, open, high, low, close, volume

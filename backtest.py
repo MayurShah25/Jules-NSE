@@ -69,6 +69,10 @@ class Backtester:
         logger.info("Calculating indicators...")
         df = self.data.copy()
 
+        if len(df) < 50:
+            logger.error("Dataset is too small to calculate indicators (requires at least 50 candles).")
+            return pd.DataFrame()
+
         # EMA
         df[f'EMA_{EMA_PERIOD}'] = ta.trend.EMAIndicator(close=df['close'], window=EMA_PERIOD).ema_indicator()
 
