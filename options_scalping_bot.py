@@ -123,11 +123,6 @@ class BrokerAPI:
             if not self.connected:
                 return 0.0
 
-        # If it's our simplified placeholder in paper trading, mock a random moving price to prevent infinite log spam
-        if PAPER_TRADING and "_ATM_" in symbol:
-            import random
-            return 100.0 + random.uniform(-2, 2)
-
         try:
             # Index spot price is on the NSE, options are on NFO
             if symbol == "NIFTY":
@@ -142,16 +137,13 @@ class BrokerAPI:
             return response[exchange_symbol]['last_price']
         except Exception as e:
             logger.error(f"Failed fetching LTP for {symbol}: {e}")
-            if PAPER_TRADING:
-                return 100.0
-            else:
-                # In live trading, returning a fake price bypasses risk management.
-                raise e
+            # Raise the exception so the trade loop can abort instead of proceeding with fake data
+            raise e
 
     def get_real_option_symbol(self, index_symbol, strike, opt_type):
         """Fetches the nearest expiry option symbol for the given index, strike, and type."""
         if not self.connected:
-            return f"{index_symbol}_ATM_{strike}_{opt_type}"
+            return None
 
         try:
             if self.instruments_cache is None:
@@ -167,7 +159,8 @@ class BrokerAPI:
             ]
 
             if not valid_options:
-                return f"{index_symbol}_ATM_{strike}_{opt_type}"
+                logger.error(f"No valid option found for {index_symbol} {strike} {opt_type}")
+                return None
 
             # Sort by expiry date and get the closest one
             valid_options.sort(key=lambda x: x['expiry'])
@@ -175,7 +168,7 @@ class BrokerAPI:
 
         except Exception as e:
             logger.warning(f"Failed to fetch option symbol: {e}")
-            return f"{index_symbol}_ATM_{strike}_{opt_type}"
+            return None
 
     def place_order(self, symbol, side, qty, order_type="MARKET", price=0.0):
         if PAPER_TRADING:
@@ -278,8 +271,11 @@ class ScalpingStrategy:
         now = datetime.now()
         if self.last_fetch_time and (now - self.last_fetch_time).total_seconds() < 60:
             if self.cached_market_data:
-                # Update only the current close price (LTP) for precise breakout detection
-                self.cached_market_data['close'] = self.broker.get_ltp(SYMBOL)
+                try:
+                    # Update only the current close price (LTP) for precise breakout detection
+                    self.cached_market_data['close'] = self.broker.get_ltp(SYMBOL)
+                except Exception as e:
+                    logger.warning(f"Error updating live index price: {e}")
                 return self.cached_market_data
 
         df = self.broker.get_historical_data(SYMBOL, TIMEFRAME)
@@ -358,8 +354,6 @@ class ScalpingStrategy:
 
     def get_option_symbol(self, strike, opt_type):
         """Constructs option trading symbol. (Format depends on broker)"""
-        if PAPER_TRADING:
-            return f"{SYMBOL}_ATM_{strike}_{opt_type}"
         return self.broker.get_real_option_symbol(SYMBOL, strike, opt_type)
 
     def execute_trade(self, opt_type, spot_price, adx_value):
@@ -367,11 +361,20 @@ class ScalpingStrategy:
         strike = self.get_atm_strike(spot_price)
         self.option_symbol = self.get_option_symbol(strike, opt_type)
 
+        if not self.option_symbol:
+            logger.error("Trade Aborted: Could not determine valid option symbol. Make sure Kite API is connected and active.")
+            return
+
         # Place Market Order
         self.broker.place_order(self.option_symbol, "BUY", QTY)
 
-        # Fetch Entry Price (Assuming immediate fill for simplicity)
-        self.entry_price = self.broker.get_ltp(self.option_symbol)
+        try:
+            # Fetch Entry Price (Assuming immediate fill for simplicity)
+            self.entry_price = self.broker.get_ltp(self.option_symbol)
+        except Exception as e:
+            logger.error(f"Trade Aborted: Failed to fetch entry price after placing order - {e}")
+            self.in_position = False
+            return
 
         # Dynamic Risk Allocation based on trend strength
         if adx_value >= 30:
@@ -407,7 +410,11 @@ class ScalpingStrategy:
 
     def manage_open_position(self):
         """Manages Trailing Take Profit, Breakeven SL, and Stop Loss hits."""
-        current_opt_price = self.broker.get_ltp(self.option_symbol)
+        try:
+            current_opt_price = self.broker.get_ltp(self.option_symbol)
+        except Exception as e:
+            logger.warning(f"Error checking open position price: {e}")
+            return
 
         if current_opt_price > self.max_opt_price_seen:
             self.max_opt_price_seen = current_opt_price
