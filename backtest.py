@@ -159,8 +159,6 @@ class Backtester:
         self.target_reached = False
         self.breakeven_reached = False
         self.is_sideways = True if adx_value < ADX_THRESHOLD else False
-        self.sideways_pnl_milestone = 1000.0
-        self.sideways_pnl_lock_amount = 500.0
 
     def calculate_taxes_and_charges(self, entry_price, exit_price, qty):
         """Calculates total brokerage and government taxes for a complete round trip (Buy + Sell)."""
@@ -291,16 +289,6 @@ class Backtester:
                 # Track max price seen for Trailing Take Profit
                 if current_opt_price > self.max_opt_price_seen:
                     self.max_opt_price_seen = current_opt_price
-
-                # Sideways Market INR Step-Trailing
-                if getattr(self, 'is_sideways', False):
-                    if floating_pnl >= self.sideways_pnl_milestone:
-                        locked_price = self.entry_price + (self.sideways_pnl_lock_amount / self.current_qty)
-                        if locked_price > self.current_sl:
-                            self.current_sl = locked_price
-                        self.sideways_pnl_milestone += 500.0
-                        self.sideways_pnl_lock_amount += 500.0
-                        self.breakeven_reached = True
 
                 # Check SL or Trailing Take Profit hit
                 if current_opt_price <= self.current_sl:

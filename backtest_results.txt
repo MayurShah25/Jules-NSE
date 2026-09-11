@@ -1,0 +1,13 @@
+=== BACKTEST RESULTS (Standard Dynamic Percentage Trailing Only) ===
+
+* Fixed INR trailing (1000/1500) removed. All trades, both Momentum and Sideways, now utilize standard structural dynamic percentage step-trailing based on the risk-reward ratio parameters assigned to the specific engine at entry.
+
+--- AUGUST 2026 (Chop / Sideways Market) ---
+Total Return: -47.25%
+Final Capital: ₹26,375.36 (Starting: ₹50,000)
+Commentary: During a predominantly sideways and choppy month, relying purely on percentage-based trailing without any strict INR-milestone lock-ins results in the account churning. The tight target parameters (6% target, 3% SL) combined with mean reversion led to significant whipsawing.
+
+--- SEPTEMBER 2026 (Trending Market) ---
+Total Return: 78.71%
+Final Capital: ₹89,352.68 (Starting: ₹50,000)
+Commentary: In a strongly trending month, the algorithm accurately captured breakouts using the momentum engine. However, the profit is lower than when we used the Dynamic Kill Switch without altering the trailing mechanism (previously September yielded up to +139%).
