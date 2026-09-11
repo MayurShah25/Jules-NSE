@@ -25,6 +25,3 @@ def print_summary(filename, month_name):
     if final_return:
         print(f"\n**Total Return:** {final_return.group(1)}")
         print(f"**Final Capital:** ₹{float(final_return.group(2)):,.2f}\n")
-
-print_summary('august_optimal.log', 'August')
-print_summary('september_optimal.log', 'September')
