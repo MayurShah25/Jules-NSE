@@ -242,21 +242,20 @@ class RiskManager:
         else:
             self.max_loss_limit = -15000.0
 
-    def check_kill_switch(self):
-        """Checks if the daily max loss limit has been hit."""
+    def check_kill_switch(self, current_floating_pnl=0.0):
+        """Checks if the daily max loss limit has been hit, including floating MTM."""
         if self.kill_switch_active:
             return True
 
-        # In Paper Trading, the Risk Manager should track the mocked internal daily_realized_pnl
-        # In Live Trading, it checks the actual broker MTM
-        if PAPER_TRADING:
-            # We will rely on the ScalpingStrategy to inject the daily_realized_pnl here later in the main loop
-            pass
-        else:
-            self.daily_pnl = self.broker.get_pnl()
+        # In Paper Trading, the Risk Manager should track the mocked internal daily_realized_pnl.
+        # In Live Trading, we can either check the broker MTM, or use our internally tracked realized PNL.
+        # For simplicity and accuracy in preventing desync with broker API lags, we will use the bot's internal tracking for both.
 
-        if self.daily_pnl <= self.max_loss_limit:
-            logger.error(f"KILL SWITCH TRIGGERED! Max Loss limit of {self.max_loss_limit} reached. Daily PnL: {self.daily_pnl}")
+        # Add the floating pnl to the realized daily pnl
+        total_pnl = self.daily_pnl + current_floating_pnl
+
+        if total_pnl <= self.max_loss_limit:
+            logger.error(f"KILL SWITCH TRIGGERED! Max Loss limit of {self.max_loss_limit} reached. Total MTM: {total_pnl}")
             self.kill_switch_active = True
             return True
         return False
@@ -509,6 +508,11 @@ class ScalpingStrategy:
             logger.info(f"[LIVE PNL] {self.option_symbol} | LTP: {current_opt_price:.2f} | PNL: ₹{current_floating_pnl:.2f} | SL: {self.current_sl:.2f}")
             self.last_pnl_heartbeat_time = now
 
+        # 0. Floating Kill Switch Hit
+        if self.risk_manager.check_kill_switch(current_floating_pnl=current_floating_pnl):
+            self.exit_trade("Kill Switch Hit")
+            return
+
         # 1. Check SL / TTP Hit
         if current_opt_price <= self.current_sl:
             reason = "Trailing Take Profit Hit" if self.target_reached else ("Break Even Hit" if self.breakeven_reached else "Stop Loss Hit")
@@ -548,9 +552,8 @@ class ScalpingStrategy:
 
     def run_cycle(self):
         """Main strategy loop executed every tick/candle."""
-        # Sync mock PNL to risk manager for paper trading kill switch
-        if PAPER_TRADING:
-            self.risk_manager.daily_pnl = self.daily_realized_pnl
+        # Sync internally tracked realized PNL to risk manager for the kill switch
+        self.risk_manager.daily_pnl = self.daily_realized_pnl
 
         if self.risk_manager.check_kill_switch():
             if self.in_position:
