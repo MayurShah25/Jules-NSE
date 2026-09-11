@@ -576,10 +576,6 @@ class ScalpingStrategy:
                 self.exit_trade("Kill Switch Triggered")
             return
 
-        if self.in_position:
-            self.manage_open_position()
-            return
-
         # Fetch market data and indicators
         market_data = self.fetch_and_calculate_indicators()
         if not market_data:
@@ -597,6 +593,10 @@ class ScalpingStrategy:
         adx = market_data['adx']
         adx_slope = market_data['adx_slope']
         rsi = market_data['rsi']
+
+        if self.in_position:
+            self.manage_open_position()
+            return
 
         # ==========================================
         # FILTERS & ENTRY LOGIC

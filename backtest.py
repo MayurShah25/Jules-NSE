@@ -254,6 +254,22 @@ class Backtester:
                 self.kill_switch_active = True
                 continue
 
+            close = row['close']
+            open_price = row['open']
+            high = row['high']
+            low = row['low']
+            r_high = row['Rolling_High']
+            r_low = row['Rolling_Low']
+            vwap = row['VWAP']
+            ema = row[f'EMA_{EMA_PERIOD}']
+            rsi = row[f'RSI_{RSI_PERIOD}']
+            adx_slope = row['ADX_Slope']
+            adx_val = row[f'ADX_{ADX_PERIOD}']
+
+            # We need valid rolling levels and indicators to trade
+            if pd.isna(r_high) or pd.isna(r_low) or pd.isna(rsi) or pd.isna(adx_slope):
+                continue
+
             # Manage open position
             if self.in_position:
                 # Mock price movement for the option based on cumulative underlying movement since entry
@@ -315,42 +331,6 @@ class Backtester:
 
             # Look for entries if not in position
             else:
-                close = row['close']
-                open_price = row['open']
-                high = row['high']
-                low = row['low']
-                r_high = row['Rolling_High']
-                r_low = row['Rolling_Low']
-                vwap = row['VWAP']
-                ema = row[f'EMA_{EMA_PERIOD}']
-                rsi = row[f'RSI_{RSI_PERIOD}']
-                adx_slope = row['ADX_Slope']
-                adx_val = row[f'ADX_{ADX_PERIOD}']
-
-                # We need valid rolling levels and indicators to trade
-                if pd.isna(r_high) or pd.isna(r_low) or pd.isna(rsi) or pd.isna(adx_slope):
-                    continue
-
-                # ==========================================
-                # STRATEGY 1: SIDEWAYS / CHOPPY MARKET
-                # ==========================================
-                if adx_val < ADX_THRESHOLD:
-                    # Supply & Demand Scalping (Mean-Reversion off extremes)
-                    # Long CE: Price drops to touch Rolling Low (Demand), closes above it, RSI indicates bounce
-                    if low <= r_low and close > r_low and rsi < 45:
-                        self._execute_trade(row, "CE")
-                        continue
-
-                    # Long PE: Price pushes to touch Rolling High (Supply), closes below it, RSI indicates rejection
-                    elif high >= r_high and close < r_high and rsi > 55:
-                        self._execute_trade(row, "PE")
-                        continue
-
-                    continue # Skip momentum strategies if in chop zone
-
-                # ==========================================
-                # STRATEGY 2: MOMENTUM / TRENDING MARKET
-                # ==========================================
                 # Chop Killer: Ensure price is expanding away from VWAP
                 vwap_distance_pct = abs(close - vwap) / vwap
 
@@ -362,30 +342,43 @@ class Backtester:
                 time_since_open = row.name - market_open_time
                 is_market_open_period = time_since_open.total_seconds() <= 45 * 60
 
-                if vwap_distance_pct <= 0.0005 and not is_market_open_period:
-                    continue # Price too close to VWAP (Chop Zone)
+                if adx_val < ADX_THRESHOLD:
+                    # ==========================================
+                    # STRATEGY 1: SIDEWAYS / CHOPPY MARKET
+                    # ==========================================
+                    # Supply & Demand Scalping (Mean-Reversion off extremes)
+                    if low <= r_low and close > r_low and rsi < 45:
+                        self._execute_trade(row, "CE")
+                        continue
+                    elif high >= r_high and close < r_high and rsi > 55:
+                        self._execute_trade(row, "PE")
+                        continue
 
-                # 1. Breakout Strategy (Momentum)
-                # Bullish Breakout of 30-Min High: Price above VWAP/EMA AND RSI > 50 (Bullish control)
-                if close > r_high and close > vwap and close > ema and rsi > 50:
-                    self._execute_trade(row, "CE")
-                    continue
+                elif vwap_distance_pct > 0.0005 or is_market_open_period:
+                    # ==========================================
+                    # STRATEGY 2: MOMENTUM / TRENDING MARKET
+                    # ==========================================
+                    # 1. Breakout Strategy (Momentum)
+                    # Bullish Breakout of 30-Min High: Price above VWAP/EMA AND RSI > 50 (Bullish control)
+                    if close > r_high and close > vwap and close > ema and rsi > 50:
+                        self._execute_trade(row, "CE")
+                        continue
 
-                # Bearish Breakdown of 30-Min Low: Price below VWAP/EMA AND RSI < 50 (Bearish control)
-                elif close < r_low and close < vwap and close < ema and rsi < 50:
-                    self._execute_trade(row, "PE")
-                    continue
+                    # Bearish Breakdown of 30-Min Low: Price below VWAP/EMA AND RSI < 50 (Bearish control)
+                    elif close < r_low and close < vwap and close < ema and rsi < 50:
+                        self._execute_trade(row, "PE")
+                        continue
 
-                # 2. Mean-Reversion Strategy (Wick Rejections)
-                # Bullish Rejection: Wick below low, closes inside range, RSI supports upside
-                if low < r_low and close > r_low and close > open_price and close > vwap and close > ema and rsi > 50:
-                    self._execute_trade(row, "CE")
-                    continue
+                    # 2. Mean-Reversion Strategy (Wick Rejections)
+                    # Bullish Rejection: Wick below low, closes inside range, RSI supports upside
+                    if low < r_low and close > r_low and close > open_price and close > vwap and close > ema and rsi > 50:
+                        self._execute_trade(row, "CE")
+                        continue
 
-                # Bearish Rejection: Wick above high, closes inside range, RSI supports downside
-                if high > r_high and close < r_high and close < open_price and close < vwap and close < ema and rsi < 50:
-                    self._execute_trade(row, "PE")
-                    continue
+                    # Bearish Rejection: Wick above high, closes inside range, RSI supports downside
+                    if high > r_high and close < r_high and close < open_price and close < vwap and close < ema and rsi < 50:
+                        self._execute_trade(row, "PE")
+                        continue
 
         self._print_summary()
 
