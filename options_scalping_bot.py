@@ -467,8 +467,8 @@ class ScalpingStrategy:
         self.last_pnl_heartbeat_time = datetime.now()
 
         # Sideways specific INR trailing
-        self.sideways_pnl_milestone = 1500.0
-        self.sideways_pnl_lock_amount = 1000.0
+        self.sideways_pnl_milestone = 1000.0
+        self.sideways_pnl_lock_amount = 500.0
 
         logger.info(f"Entered {opt_type} at {self.entry_price}. Initial SL: {self.current_sl}")
 
@@ -509,7 +509,7 @@ class ScalpingStrategy:
         current_floating_pnl = (current_opt_price - self.entry_price) * trade_qty
 
         # Sideways Market INR Step-Trailing
-        # If we are in chop mode, lock in 1000 rupees for every 1500 gained
+        # If we are in chop mode, lock in 500 rupees for every 1000 gained
         if getattr(self, 'is_sideways', False):
             if current_floating_pnl >= self.sideways_pnl_milestone:
                 # Calculate the exact price needed to guarantee the lock_amount
@@ -517,9 +517,9 @@ class ScalpingStrategy:
                 if locked_price > self.current_sl:
                     logger.info(f"Sideways INR Milestone Hit (+₹{self.sideways_pnl_milestone}). Locking in ₹{self.sideways_pnl_lock_amount} profit.")
                     self.current_sl = locked_price
-                # Increment the milestone for the next jump (e.g. 3000, 4500)
-                self.sideways_pnl_milestone += 1500.0
-                self.sideways_pnl_lock_amount += 1000.0
+                # Increment the milestone for the next jump (e.g. 1500, 2000)
+                self.sideways_pnl_milestone += 500.0
+                self.sideways_pnl_lock_amount += 500.0
                 self.breakeven_reached = True # Prevent normal break-even logic from overwriting this
 
         # Live PNL Logging
