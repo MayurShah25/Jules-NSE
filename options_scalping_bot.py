@@ -463,7 +463,13 @@ class ScalpingStrategy:
         self.max_opt_price_seen = self.entry_price
         self.target_reached = False
         self.breakeven_reached = False
+        self.is_sideways = True if adx_value < ADX_THRESHOLD else False
         self.last_pnl_heartbeat_time = datetime.now()
+
+        # Sideways specific INR trailing
+        self.sideways_pnl_milestone = 1500.0
+        self.sideways_pnl_lock_amount = 1000.0
+
         logger.info(f"Entered {opt_type} at {self.entry_price}. Initial SL: {self.current_sl}")
 
     def exit_trade(self, reason):
@@ -499,11 +505,27 @@ class ScalpingStrategy:
         if current_opt_price > self.max_opt_price_seen:
             self.max_opt_price_seen = current_opt_price
 
+        trade_qty = getattr(self, 'current_qty', 500)
+        current_floating_pnl = (current_opt_price - self.entry_price) * trade_qty
+
+        # Sideways Market INR Step-Trailing
+        # If we are in chop mode, lock in 1000 rupees for every 1500 gained
+        if getattr(self, 'is_sideways', False):
+            if current_floating_pnl >= self.sideways_pnl_milestone:
+                # Calculate the exact price needed to guarantee the lock_amount
+                locked_price = self.entry_price + (self.sideways_pnl_lock_amount / trade_qty)
+                if locked_price > self.current_sl:
+                    logger.info(f"Sideways INR Milestone Hit (+₹{self.sideways_pnl_milestone}). Locking in ₹{self.sideways_pnl_lock_amount} profit.")
+                    self.current_sl = locked_price
+                # Increment the milestone for the next jump (e.g. 3000, 4500)
+                self.sideways_pnl_milestone += 1500.0
+                self.sideways_pnl_lock_amount += 1000.0
+                self.breakeven_reached = True # Prevent normal break-even logic from overwriting this
+
         # Live PNL Logging
         now = datetime.now()
         if (now - self.last_pnl_heartbeat_time).total_seconds() >= 30: # Log every 30 seconds
-            live_pnl = (current_opt_price - self.entry_price) * getattr(self, 'current_qty', 500)
-            logger.info(f"[LIVE PNL] {self.option_symbol} | LTP: {current_opt_price:.2f} | PNL: ₹{live_pnl:.2f} | SL: {self.current_sl:.2f}")
+            logger.info(f"[LIVE PNL] {self.option_symbol} | LTP: {current_opt_price:.2f} | PNL: ₹{current_floating_pnl:.2f} | SL: {self.current_sl:.2f}")
             self.last_pnl_heartbeat_time = now
 
         # 1. Check SL / TTP Hit
