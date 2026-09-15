@@ -117,11 +117,28 @@ class BrokerAPI:
                 df.set_index('datetime', inplace=True)
                 return df
             else:
-                logger.error("No historical data returned from Zerodha.")
-                return None
+                raise Exception("Empty records list returned from Zerodha API.")
         except Exception as e:
-            logger.error(f"Error fetching historical data: {e}")
-            return None
+            logger.error(f"Zerodha Historical API failed: {e}. Falling back to yfinance.")
+            # Fallback to yfinance if Zerodha historical API fails or user has no subscription
+            try:
+                import yfinance as yf
+                yf_symbol = "^NSEBANK"
+                # yfinance valid intervals: 1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo
+                yf_tf = "1m" if timeframe == "1min" else timeframe.replace("min", "m")
+                # 1m data is only available for the last 7 days per request
+                df = yf.download(yf_symbol, period='5d', interval=yf_tf, progress=False)
+                if df is not None and not df.empty:
+                    if isinstance(df.columns, pd.MultiIndex):
+                        df.columns = df.columns.droplevel(1)
+                    df = df.rename(columns={'Open': 'open', 'High': 'high', 'Low': 'low', 'Close': 'close', 'Volume': 'volume'})
+                    return df
+                else:
+                    logger.error("yfinance fallback also returned no data.")
+                    return None
+            except Exception as yf_e:
+                logger.error(f"yfinance fallback failed: {yf_e}")
+                return None
 
     def get_ltp(self, symbol):
         """Fetches Last Traded Price (LTP)."""
@@ -311,12 +328,15 @@ class ScalpingStrategy:
                 except Exception as e:
                     logger.warning(f"Error updating live index price: {e}")
                 return self.cached_market_data
+            return None # Strict rate limit enforcement if cache is empty
 
         df = self.broker.get_historical_data(SYMBOL, TIMEFRAME)
+
+        # Always update the fetch time so we don't spam the API on failure
+        self.last_fetch_time = now
+
         if df is None or len(df) < 50:
             return None
-
-        self.last_fetch_time = now
 
         # Assuming 'df' has columns: datetime, open, high, low, close, volume
         # 1. Rolling 30-Minute High / Low (30 candles on 1min chart)
@@ -572,7 +592,13 @@ class ScalpingStrategy:
 
         # Fetch market data and indicators
         market_data = self.fetch_and_calculate_indicators()
+
+        now = datetime.now()
+
         if not market_data:
+            if (now - self.last_heartbeat_time).total_seconds() >= 300:
+                logger.info(f"[HEARTBEAT] Bot is alive. Waiting for valid market data...")
+                self.last_heartbeat_time = now
             return
 
         timestamp = market_data['timestamp']
@@ -667,9 +693,8 @@ class ScalpingStrategy:
 
         # --- Heartbeat Logging ---
         # Print a status update every 5 minutes so the user knows what the bot is thinking
-        now = datetime.now()
         if (now - self.last_heartbeat_time).total_seconds() >= 300: # 300 seconds = 5 mins
-            logger.info(f"[HEARTBEAT] NIFTY LTP: {close_price:.2f} | ADX: {adx:.2f} | RSI: {rsi:.2f}")
+            logger.info(f"[HEARTBEAT] BANKNIFTY LTP: {close_price:.2f} | ADX: {adx:.2f} | RSI: {rsi:.2f}")
             logger.info(f"[STATUS] Skipping Trade: {current_reason}")
             self.last_heartbeat_time = now
         # -------------------------
