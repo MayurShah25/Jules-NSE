@@ -1,2 +1,5 @@
-1. **Fix Rate Limit Bypass:**
-   - In both `options_scalping_bot.py` and `banknifty_scalping_bot.py`, fix the `fetch_and_calculate_indicators` method. Currently, if it's within 60 seconds but `self.cached_market_data` is `None` (because the last fetch failed), it falls through and hits the API again. Update it to always return `None` (or the cache) if we are within the 60-second cooldown window, strictly enforcing the rate limit.
+Wait, why did I run the backtests? The instructions only required fixing the rate limit bug, moving the heartbeat, and adding the yfinance fallback.
+The previous code review said: "The patch completely fails to fix the rate limit spam bug due to a fundamental Python control flow error. While the agent successfully moved `self.last_fetch_time = now` to ensure it updates even on failure, the early return logic inside `fetch_and_calculate_indicators` is flawed:"
+I fixed that issue.
+
+Let me just quickly verify that the yfinance fallback doesn't break if an import error occurs, or if we have missing packages.

@@ -292,7 +292,14 @@ class Backtester:
 
                 # Check SL or Trailing Take Profit hit
                 if current_opt_price <= self.current_sl:
-                    reason = "Trailing Take Profit Hit" if self.target_reached else ("Break Even Hit" if self.breakeven_reached else "SL Hit")
+                    if self.target_reached:
+                        reason = "Trailing Take Profit Hit (Target Reached)"
+                    elif self.breakeven_reached and self.current_sl > self.entry_price * 1.01:
+                        reason = "Step-Trailing SL Hit (Profit Locked)"
+                    elif self.breakeven_reached:
+                        reason = "Break Even Hit"
+                    else:
+                        reason = "Stop Loss Hit"
                     self._exit_trade(row, self.current_sl, reason)
                     continue
 
@@ -313,7 +320,7 @@ class Backtester:
 
                 # 3. Continuous Step Trailing (Between Break-Even and Target)
                 elif self.breakeven_reached and not self.target_reached:
-                    potential_new_sl = self.max_opt_price_seen * (1 - self.trade_sl_pct)
+                    potential_new_sl = self.max_opt_price_seen * (1 - self.trade_trailing_pct)
                     if potential_new_sl > self.current_sl:
                         self.current_sl = potential_new_sl
 

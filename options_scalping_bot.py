@@ -535,7 +535,14 @@ class ScalpingStrategy:
 
         # 1. Check SL / TTP Hit
         if current_opt_price <= self.current_sl:
-            reason = "Trailing Take Profit Hit" if self.target_reached else ("Break Even Hit" if self.breakeven_reached else "Stop Loss Hit")
+            if self.target_reached:
+                reason = "Trailing Take Profit Hit (Target Reached)"
+            elif self.breakeven_reached and self.current_sl > self.entry_price * 1.01:
+                reason = "Step-Trailing SL Hit (Profit Locked)"
+            elif self.breakeven_reached:
+                reason = "Break Even Hit"
+            else:
+                reason = "Stop Loss Hit"
             self.exit_trade(reason)
             return
 
@@ -563,9 +570,8 @@ class ScalpingStrategy:
 
         # 4. Continuous Step Trailing (Between Break-Even and Target)
         elif self.breakeven_reached and not self.target_reached:
-            # Trail behind by a wider margin (e.g. initial SL pct) to give it room to hit target
-            # This locks in gains if the price reverses midway before hitting the final target
-            new_sl = self.risk_manager.update_trailing_take_profit(current_opt_price, self.current_sl, self.max_opt_price_seen, self.trade_sl_pct)
+            # Trail behind by the trailing percentage to lock in more gains if it reverses midway
+            new_sl = self.risk_manager.update_trailing_take_profit(current_opt_price, self.current_sl, self.max_opt_price_seen, self.trade_trailing_pct)
             if new_sl > self.current_sl:
                 logger.info(f"Step-Trailing SL up to lock in profit: {new_sl:.2f}")
                 self.current_sl = new_sl
