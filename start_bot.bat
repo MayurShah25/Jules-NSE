@@ -1,7 +1,7 @@
 @echo off
 echo ===========================================
 echo   Starting NSE Options Scalping Bot
-echo   Mode: PAPER TRADING
+echo   Mode: LIVE TRADING
 echo ===========================================
 echo Ensure you have updated your Zerodha API keys in options_scalping_bot.py
 echo Remember to run 'python zerodha_login.py' first if your daily token has expired.

@@ -4,8 +4,8 @@ from datetime import datetime, timedelta
 import banknifty_backtest
 
 def run_multi_day_compounding():
-    start_date_str = '2026-09-01'
-    end_date_str = '2026-09-10'
+    start_date_str = '2026-08-01'
+    end_date_str = '2026-08-30'
     symbol = '^NSEBANK' # Nifty Bank
 
     print(f"Fetching BankNifty data from {start_date_str} to {end_date_str} in chunks...")

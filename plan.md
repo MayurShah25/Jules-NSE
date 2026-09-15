@@ -1,11 +1,8 @@
-1. **Fix Original Nifty Scripts:**
-   - Modify `options_scalping_bot.py` and `backtest.py` back to their Nifty-only versions. I incorrectly left `SYMBOL = "BANKNIFTY"` and changed the lot sizing to variable dictionary lookups which broke them. I need to revert these to `SYMBOL = "NIFTY"`, restoring their pure structure.
+1. **Disable Paper Trading:**
+   - In `options_scalping_bot.py` and `banknifty_scalping_bot.py`, set the global configuration parameter `PAPER_TRADING = False`.
 
-2. **Enforce ₹50,000 Capital Limit on Live BankNifty Bot:**
-   - In `banknifty_scalping_bot.py`, I will implement a hard limit on position sizing. Even if `self.broker.get_balance()` returns ₹1,000,000, the maximum allocation for the BankNifty bot will be strictly capped at ₹50,000 to fulfill the user's requirement.
+2. **Verify Broker API Order Placement:**
+   - Verify that the `place_order` and `exit_position` methods in the `BrokerAPI` class properly transmit real orders to the Zerodha Kite Connect API using `self.kite.place_order(...)` instead of mocking the orders, and that they handle the `PAPER_TRADING` flag correctly.
 
-3. **Verify BankNifty Logic:**
-   - Ensure `banknifty_backtest.py` and `banknifty_scalping_bot.py` correctly target `BANKNIFTY`, `260105`, strike multiples of `100`, and lot sizes of `15`.
-
-4. **Test and Verify:**
-   - Ensure no regressions occur in Nifty scripts.
+3. **Verify the Daily PNL calculation logic for real orders:**
+   - Ensure the RiskManager accurately assesses PNL from the broker's real MTM (Mark To Market) and doesn't rely solely on the internally calculated PNL when in live execution mode. (Wait, in a previous step we intentionally changed this to *always* use the internally calculated PNL because it's faster and avoids desync. Let me check the code to see if that's safe for live).

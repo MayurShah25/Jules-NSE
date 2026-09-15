@@ -29,7 +29,7 @@ ADX_THRESHOLD = 20
 RSI_PERIOD = 14
 
 # Mode Setup
-PAPER_TRADING = True  # Set to False ONLY when ready to risk real capital
+PAPER_TRADING = False  # Set to False ONLY when ready to risk real capital
 
 # Logging Setup
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
