@@ -71,9 +71,9 @@ Because Zerodha enforces strict validation rules that prevent redirecting direct
 
 1. Ensure your Zerodha Redirect URL is set to `http://127.0.0.1:8000`.
 2. Every morning around 8:45 AM, open **PowerShell** on your local Windows computer.
-3. Run the automated deployment script:
+3. Run the automated deployment script by temporarily bypassing Windows execution policy blocks:
 ```powershell
-.\deploy_to_aws.ps1
+powershell -ExecutionPolicy Bypass -File .\deploy_to_aws.ps1
 ```
 
 **What the script does:**
