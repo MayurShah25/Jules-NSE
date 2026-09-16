@@ -184,15 +184,17 @@ class BrokerAPI:
 
             if not valid_options:
                 logger.error(f"No valid option found for {index_symbol} {strike} {opt_type}")
-                return None
+                return None, None
 
             # Sort by expiry date and get the closest one
             valid_options.sort(key=lambda x: x['expiry'])
-            return valid_options[0]['tradingsymbol']
+            best_option = valid_options[0]
+
+            return best_option['tradingsymbol'], best_option['lot_size']
 
         except Exception as e:
             logger.warning(f"Failed to fetch option symbol: {e}")
-            return None
+            return None, None
 
     def place_order(self, symbol, side, qty, order_type="MARKET", price=0.0):
         if PAPER_TRADING:
@@ -429,10 +431,10 @@ class ScalpingStrategy:
     def execute_trade(self, opt_type, spot_price, adx_value):
         """Executes the entry order and sets dynamic initial SL."""
         strike = self.get_atm_strike(spot_price)
-        self.option_symbol = self.get_option_symbol(strike, opt_type)
+        self.option_symbol, dynamic_lot_size = self.get_option_symbol(strike, opt_type)
 
-        if not self.option_symbol:
-            logger.error("Trade Aborted: Could not determine valid option symbol. Make sure Kite API is connected and active.")
+        if not self.option_symbol or not dynamic_lot_size:
+            logger.error("Trade Aborted: Could not determine valid option symbol or lot size from broker.")
             return
 
         # Capital allocation restricts the live bot to 50k
@@ -453,14 +455,14 @@ class ScalpingStrategy:
         except Exception:
             pass
 
-        calculated_lots = int(max_investment / (estimated_premium * LOT_SIZE))
+        calculated_lots = int(max_investment / (estimated_premium * dynamic_lot_size))
         calculated_lots = min(calculated_lots, 10) # Cap at 10 lots max to prevent slippage issues
 
         if calculated_lots <= 0:
             logger.error(f"Trade Aborted: Insufficient funds to buy even 1 lot. Balance: {live_balance}")
             return
 
-        trade_qty = calculated_lots * LOT_SIZE
+        trade_qty = calculated_lots * dynamic_lot_size
 
         # Place Market Order
         order_id = self.broker.place_order(self.option_symbol, "BUY", trade_qty)

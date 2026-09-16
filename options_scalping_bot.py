@@ -175,15 +175,17 @@ class BrokerAPI:
 
             if not valid_options:
                 logger.error(f"No valid option found for {index_symbol} {strike} {opt_type}")
-                return None
+                return None, None
 
             # Sort by expiry date and get the closest one
             valid_options.sort(key=lambda x: x['expiry'])
-            return valid_options[0]['tradingsymbol']
+            best_option = valid_options[0]
+
+            return best_option['tradingsymbol'], best_option['lot_size']
 
         except Exception as e:
             logger.warning(f"Failed to fetch option symbol: {e}")
-            return None
+            return None, None
 
     def place_order(self, symbol, side, qty, order_type="MARKET", price=0.0):
         if PAPER_TRADING:
@@ -420,10 +422,10 @@ class ScalpingStrategy:
     def execute_trade(self, opt_type, spot_price, adx_value):
         """Executes the entry order and sets dynamic initial SL."""
         strike = self.get_atm_strike(spot_price)
-        self.option_symbol = self.get_option_symbol(strike, opt_type)
+        self.option_symbol, dynamic_lot_size = self.get_option_symbol(strike, opt_type)
 
-        if not self.option_symbol:
-            logger.error("Trade Aborted: Could not determine valid option symbol. Make sure Kite API is connected and active.")
+        if not self.option_symbol or not dynamic_lot_size:
+            logger.error("Trade Aborted: Could not determine valid option symbol or lot size from broker.")
             return
 
         # Dynamic Quantity Calculation based on Live Balance (Max 10 Lots)
@@ -432,7 +434,6 @@ class ScalpingStrategy:
         max_investment = live_balance * 0.95
 
         # Estimate premium using ~0.5 delta assumption for ATM (just for initial sizing if fetching fails)
-        # Nifty Lot Size is 50
         estimated_premium = (spot_price * 0.005)
 
         # Try to get the actual live premium first to size perfectly
@@ -443,14 +444,14 @@ class ScalpingStrategy:
         except Exception:
             pass
 
-        calculated_lots = int(max_investment / (estimated_premium * 50))
-        calculated_lots = min(calculated_lots, 10) # Cap at 10 lots (500 qty)
+        calculated_lots = int(max_investment / (estimated_premium * dynamic_lot_size))
+        calculated_lots = min(calculated_lots, 10) # Cap at 10 lots max
 
         if calculated_lots <= 0:
             logger.error(f"Trade Aborted: Insufficient funds to buy even 1 lot. Balance: {live_balance}")
             return
 
-        trade_qty = calculated_lots * 50
+        trade_qty = calculated_lots * dynamic_lot_size
 
         # Place Market Order
         order_id = self.broker.place_order(self.option_symbol, "BUY", trade_qty)
