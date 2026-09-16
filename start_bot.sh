@@ -15,4 +15,7 @@ if [ ! -f "access_token.txt" ]; then
 fi
 
 # Run the python script
-python options_scalping_bot.py
+python3 options_scalping_bot.py > nifty_bot.log 2>&1 &
+echo "Starting BankNifty Bot in the background..."
+python3 banknifty_scalping_bot.py > banknifty_bot.log 2>&1 &
+echo "All bots started successfully! Check nifty_bot.log and banknifty_bot.log for live output."
