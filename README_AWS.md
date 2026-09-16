@@ -11,7 +11,6 @@ This guide will walk you through launching an AWS EC2 server, installing the bot
 6. **Network Settings:**
    - Check **Allow SSH traffic** (Port 22).
    - Check **Allow HTTP traffic**.
-   - Edit the Security Group to add a **Custom TCP Rule** for Port `8000` (Source: `0.0.0.0/0`). *This allows you to access the login URL from your phone.*
 7. Click **Launch Instance**.
 
 ### Step 2: Connect to your Server
@@ -67,22 +66,20 @@ source venv/bin/activate
 pip install pandas numpy ta kiteconnect yfinance flask
 ```
 
-### Step 6: Start the Server inside Tmux
-We use `tmux` so that the server stays alive even when you close your SSH connection.
+### Step 6: The Daily Morning Routine (Automated Sync)
+Because Zerodha enforces strict validation rules that prevent redirecting directly to AWS Public IPs, we use a highly secure "Local Sync" method.
 
-```bash
-# Start a tmux session
-tmux new -s trading
-
-# Activate environment and run the server
-source venv/bin/activate
-python3 aws_server_manager.py
+1. Ensure your Zerodha Redirect URL is set to `http://127.0.0.1:8000`.
+2. Every morning around 8:45 AM, open **PowerShell** on your local Windows computer.
+3. Run the automated deployment script:
+```powershell
+.\deploy_to_aws.ps1
 ```
-*Tip: To safely exit the tmux screen without killing the server, press `Ctrl+B`, then `D` (detach).*
 
-### Step 7: The Daily Morning Routine
-1. Type `http://<YOUR_AWS_PUBLIC_IP>:8000` into your phone/browser.
-2. Click the Login link.
-3. Once authenticated, the server grabs your `access_token` and automatically launches **both** `options_scalping_bot.py` and `banknifty_scalping_bot.py` in the background.
+**What the script does:**
+1. Opens your local browser to log into Zerodha.
+2. Generates the `access_token.txt` locally.
+3. Asks for your AWS Public IP, then securely uploads the token to your server via SSH.
+4. Tells the AWS server to quietly launch both the Nifty and BankNifty trading bots in the background.
 
-*(Once you generate a Static/Elastic IP later, you just update the IP address!)*
+You can safely close the PowerShell window! If you want to check on the bots later, simply SSH into your AWS server and type `cat nifty_bot.log` or `cat banknifty_bot.log`.
