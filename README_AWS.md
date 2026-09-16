@@ -15,11 +15,23 @@ This guide will walk you through launching an AWS EC2 server, installing the bot
 7. Click **Launch Instance**.
 
 ### Step 2: Connect to your Server
-Open your terminal (Mac/Linux) or PowerShell (Windows) where your `.pem` key was downloaded:
+Open your terminal (Mac/Linux) or PowerShell (Windows) where your `.pem` key was downloaded.
 
+**For Mac/Linux:**
 ```bash
 # Secure your key
 chmod 400 trading-key.pem
+
+# SSH into the server
+ssh -i "trading-key.pem" ubuntu@<YOUR_AWS_PUBLIC_IP>
+```
+
+**For Windows (PowerShell):**
+```powershell
+# Secure your key (Removes inherited permissions and grants access only to you)
+icacls.exe trading-key.pem /reset
+icacls.exe trading-key.pem /grant:r "$($env:USERNAME):(R)"
+icacls.exe trading-key.pem /inheritance:r
 
 # SSH into the server
 ssh -i "trading-key.pem" ubuntu@<YOUR_AWS_PUBLIC_IP>
