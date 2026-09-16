@@ -207,7 +207,23 @@ class BrokerAPI:
 
             # Map 'BUY'/'SELL' to Zerodha constants
             txn_type = self.kite.TRANSACTION_TYPE_BUY if side.upper() == "BUY" else self.kite.TRANSACTION_TYPE_SELL
-            ord_type = self.kite.ORDER_TYPE_MARKET if order_type.upper() == "MARKET" else self.kite.ORDER_TYPE_LIMIT
+
+            # Zerodha blocks raw MARKET orders for NFO. We must convert MARKET to an aggressive LIMIT order.
+            if order_type.upper() == "MARKET":
+                ord_type = self.kite.ORDER_TYPE_LIMIT
+                try:
+                    ltp = self.get_ltp(symbol)
+                    # Add 2% buffer for buy, subtract 2% for sell to ensure instant execution
+                    buffer_pct = 1.02 if side.upper() == "BUY" else 0.98
+                    aggressive_price = ltp * buffer_pct
+                    # Round to nearest 0.05 (NSE tick size)
+                    price = round(aggressive_price / 0.05) * 0.05
+                    logger.info(f"Converted MARKET to aggressive LIMIT order at ₹{price:.2f} (LTP was ₹{ltp})")
+                except Exception as e:
+                    logger.error(f"Failed to fetch LTP for aggressive limit conversion: {e}")
+                    return None
+            else:
+                ord_type = self.kite.ORDER_TYPE_LIMIT
 
             try:
                 order_id = self.kite.place_order(
