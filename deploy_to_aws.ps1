@@ -33,7 +33,7 @@ if (-Not (Test-Path "access_token.txt")) {
         Write-Host "Step 3: Triggering remote bots on AWS..." -ForegroundColor Yellow
         ssh -i "trading-key.pem" ubuntu@${AWS_IP} "cd ~/trading-bot && source venv/bin/activate && bash start_bot.sh"
 
-        Write-Host "✅ SUCCESS! Both Nifty and BankNifty bots are now trading live on your AWS Server!" -ForegroundColor Green
+        Write-Host "✅ SUCCESS! All bots (Nifty, BankNifty, Crude, NatGas) are now trading live on your AWS Server!" -ForegroundColor Green
         Write-Host "You can close this window. Check your AWS server logs to monitor them." -ForegroundColor Green
     }
 }

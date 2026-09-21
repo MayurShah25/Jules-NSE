@@ -1,10 +1,10 @@
-# Options Scalping Bot Strategy Architecture
+# NSE & MCX Scalping Bot Strategy Architecture
 
-This document outlines the detailed strategy architecture for the automated Options Buying Bot for NSE (Nifty/BankNifty).
+This document outlines the detailed strategy architecture for the automated Options Buying Bots (NSE Nifty/BankNifty) and Commodities Futures Bots (MCX Crude Oil/Natural Gas).
 
 ## 1. Strategy Architecture Overview
 
-The bot is a high-frequency, 1-minute intraday scalper. It completely abandons arbitrary "Daily" support and resistance levels, instead utilizing a highly dynamic **30-Minute Rolling Window** combined with advanced momentum filters to trigger trades only during statistically probable expansions.
+The bots are high-frequency, 1-minute intraday scalpers. They utilize a highly dynamic **30-Minute Rolling Window** combined with advanced momentum filters to trigger trades only during statistically probable expansions.
 
 ### Entry Logic
 
@@ -15,16 +15,24 @@ The bot is a high-frequency, 1-minute intraday scalper. It completely abandons a
 3.  **Mean-Reversion Strategy (Wick Rejections):**
     *   If a candle wicks outside the 30-min rolling level but closes back *inside* the range (in the direction of the macro trend), the bot buys the bounce.
 4.  **Instrument Selection:**
-    *   It strictly buys At-The-Money (ATM) strikes (rounded to the nearest 50 for Nifty) to maintain a healthy ~0.5 Delta and prevent excessive Theta decay.
+    *   **NSE:** Strictly buys At-The-Money (ATM) strikes to maintain a healthy ~0.5 Delta and prevent excessive Theta decay.
+    *   **MCX:** Directly trades the nearest-expiry front-month Futures contract.
 
 ### Exit & Dynamic Risk Management
 
-The bot utilizes an AI-like Dynamic Risk Allocation system based on the `ADX` indicator at the exact time of entry:
+The bots utilize two distinct risk management paradigms:
 
-*   **Strong Trend Mode (ADX >= 30):** The bot recognizes a massive breakout is occurring. It widens the Stop Loss to **8%** to survive volatility, pushes the Take Profit target to **20%**, and uses a **5%** Trailing Take Profit (TTP) to let the winner run.
-*   **Moderate Trend Mode (ADX >= 20):** The bot recognizes standard momentum. It tightens the Stop Loss to **5%**, aims for a **10%** Take Profit target, and trails very tightly at **3%**.
-*   **Sideways/Chop Mode (ADX < 20):** The bot recognizes the market is ranging. It executes high-probability mean-reversion bounces off the 30-minute Rolling High/Low with ultra-tight constraints: **3% SL**, **6% Target**, and **2% Trailing**.
-*   **Step-Trailing & Break-Even Preservation:** On all trades, if the option premium gains match the Stop Loss percentage (a 1:1 Risk/Reward), the Stop Loss is permanently moved to the Break-Even entry price to ensure a winning trade never turns red. The SL is then continuously "step-trailed" upwards behind the price action to incrementally lock in profit.
+1. **NSE Options (Percentage-Based Dynamic Risk):**
+   *   **Strong Trend Mode (ADX >= 30):** The bot recognizes a massive breakout is occurring. It widens the Stop Loss to **8%** to survive volatility, pushes the Take Profit target to **20%**, and uses a **5%** Trailing Take Profit (TTP) to let the winner run.
+   *   **Moderate Trend Mode (ADX >= 20):** The bot recognizes standard momentum. It tightens the Stop Loss to **5%**, aims for a **10%** Take Profit target, and trails very tightly at **3%**.
+   *   **Sideways/Chop Mode (ADX < 20):** The bot recognizes the market is ranging. It executes high-probability mean-reversion bounces off the 30-minute Rolling High/Low with ultra-tight constraints: **3% SL**, **6% Target**, and **2% Trailing**.
+
+2. **MCX Mini Futures (Hard-Point Scalping):**
+   * Commodities are traded using strict point-based scalping targets to overcome volatility and slippage.
+   * **Crude Oil:** Target 15 Points, SL 8 Points, Trailing 5 Points.
+   * **Natural Gas:** Target 2 Points, SL 1 Point, Trailing 0.5 Points.
+
+*   **Step-Trailing & Break-Even Preservation:** On all trades, if the asset gains match the Stop Loss threshold (a 1:1 Risk/Reward), the Stop Loss is permanently moved to the Break-Even entry price (plus slippage buffer) to ensure a winning trade never turns red. The SL is then continuously "step-trailed" upwards behind the price action to incrementally lock in profit.
 
 ---
 
@@ -42,6 +50,6 @@ To prevent bleeding capital in sideways markets (whipsawing), the bot must pass 
 
 ## 3. Capital Protection Module
 
-1.  **Strict 15:15 MIS Auto-Square-Off:** Options buyers are crushed by overnight gaps and Theta decay. At exactly 3:15 PM, the bot auto-cancels all pending orders and Market-Sells any open positions, keeping you 100% in cash overnight.
+1.  **Strict MIS Auto-Square-Off:** Options buyers are crushed by overnight gaps and Theta decay. At exactly 3:15 PM (NSE) or 11:15 PM (MCX), the bots auto-cancel all pending orders and Market-Sell any open positions, keeping you 100% in cash overnight.
 2.  **Daily Kill Switch (Max Loss Per Day):** The bot continuously monitors your overall MTM. If it hits the defined Daily Max Loss, it completely halts all trading for the rest of the day to prevent revenge trading.
-3.  **Maximum Exposure Capping:** Even as capital compounds, the bot refuses to buy more than **10 Lots (500 units)** per order to respect exchange freeze limits and prevent catastrophic single-trade exposure.
+3.  **Maximum Exposure Capping:** Even as capital compounds, the bot refuses to buy more than **10 Lots** per order to respect exchange freeze limits and prevent catastrophic single-trade exposure.

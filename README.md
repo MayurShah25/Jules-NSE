@@ -1,6 +1,6 @@
-# NSE Options Scalping Bot
+# NSE & MCX Scalping Bot Suite
 
-An automated Options Buying Bot for the Indian Stock Market (Nifty/BankNifty). It uses dynamic risk allocation based on intraday momentum (ADX & EMA) and hyper-scalping mechanics on the 1-minute timeframe to capture breakouts and mean-reversions.
+An automated algorithmic trading suite for the Indian Stock Market (Nifty/BankNifty Options) and Commodities Market (Crude Oil/Natural Gas Mini Futures). It uses dynamic risk allocation based on intraday momentum (ADX & EMA) and hyper-scalping mechanics on the 1-minute timeframe to capture breakouts and mean-reversions.
 
 ## 1. Environment Setup
 
@@ -30,33 +30,39 @@ Zerodha's API regulations require you to manually authenticate your account once
 
 ## 3. Configuring the Bot
 
-Open `options_scalping_bot.py` and replace `"YOUR_ZERODHA_API_KEY"` on Line 44. You do **not** need to touch the access token, as the bot will automatically read it from the `access_token.txt` file you generated in Step 2.
+Open the specific bot script (e.g., `options_scalping_bot.py` or `crude_scalping_bot.py`) and replace `"YOUR_ZERODHA_API_KEY"`. You do **not** need to touch the access token, as the bots will automatically read it from the `access_token.txt` file you generated in Step 2.
 
 ## 4. How to Run
 
-### Run the Backtester (Historical Data Simulation)
-The backtester includes built-in mock data generation so you can run it immediately without API keys to see how the mathematical logic and Indian broker fee structures work.
+### Run the Backtesters (Historical Data Simulation)
+You can run the backtesters to verify strategy logic on historical data. For Crude Oil and Natural Gas, the backtesters automatically download recent data using yfinance.
 ```bash
-python backtest.py
+python backtest.py                # For Nifty Options
+python banknifty_backtest.py      # For BankNifty Options
+python crude_backtest.py          # For Crude Oil Futures
+python natgas_backtest.py         # For Natural Gas Futures
 ```
 
-### Run the Live Bot (Paper Trading)
-By default, `PAPER_TRADING = True` is set at the top of `options_scalping_bot.py`.
-Once you have plugged in your broker's API keys so the bot can fetch the live ticker data, you can launch the bot via the provided starter scripts. It will automatically check for a valid `access_token.txt`, analyze the live market, and log its thought process (including a 5-minute heartbeat telling you exactly why it is skipping trades).
+### Run the Live Bots (Paper Trading)
+By default, `PAPER_TRADING = True` is set at the top of each script.
+Once you have plugged in your broker's API keys so the bots can fetch the live ticker data, you can launch the bots via the provided starter scripts.
 
 **For Windows:**
 Double-click `start_bot.bat` or run:
 ```bash
 start_bot.bat
 ```
+*(This provides an interactive menu to choose which bot to run.)*
 
 **For Mac/Linux:**
 ```bash
 ./start_bot.sh
 ```
+*(This automatically deploys all bots in the background securely using the script.)*
+
 *Note: The bot includes an auto-reconnect function. If the Zerodha socket drops during market hours, it will automatically attempt to reconnect without crashing.*
 
 ### Run the Live Bot (Real Capital)
 Once you are confident in the bot's paper trading performance:
-1. Change `PAPER_TRADING = False` at the top of `options_scalping_bot.py`.
-2. Run the start script during market hours. The bot will execute live orders, manage dynamic stop losses, and strictly halt and auto-square-off all open positions at exactly **3:15 PM** every day.
+1. Change `PAPER_TRADING = False` at the top of the desired bot script.
+2. Run the start script during market hours. The bot will execute live orders, manage dynamic stop losses, and strictly halt and auto-square-off all open positions at exactly **3:15 PM** for NSE and **11:15 PM** for MCX.
