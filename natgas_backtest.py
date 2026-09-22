@@ -111,56 +111,47 @@ class Backtester:
         """Simulates entering a trade."""
         self.in_position = True
         self.position_type = opt_type
+
+        # Commodities futures trade directly on the asset price
         self.underlying_entry_price = row['close']
 
-        # Calculate Option Chain specific symbol
-        strike = self.get_atm_strike(self.underlying_entry_price)
-        self.option_symbol = f"{SYMBOL}{int(strike)}{opt_type}"
+        # Apply slippage based on position type
+        if opt_type == "CE":  # Long
+            self.entry_price = self.underlying_entry_price + SLIPPAGE
+        else:  # Short
+            self.entry_price = self.underlying_entry_price - SLIPPAGE
 
-        # Simulate highly dynamic ATM option premium.
-        # Base is ~0.5% of the index, but we inject a random intraday implied volatility multiplier
-        # between 0.8x and 1.5x so the premiums are truly dynamic (e.g. ₹96 to ₹180) and not stuck in a single range
-        iv_multiplier = np.random.uniform(0.8, 1.5)
-        simulated_atm_premium = (self.underlying_entry_price * 0.005) * iv_multiplier
-        self.entry_price = simulated_atm_premium + SLIPPAGE # Slippage applies per unit of option premium
+        self.option_symbol = f"{SYMBOL}_FUT"
 
-        # Dynamic Compounding: Calculate max lots we can buy with 95% of current capital
+        # Margin requirement for MCX commodities is roughly ~15%
+        margin_per_lot = self.entry_price * LOT_SIZE * 0.15
         max_investment = self.capital * MAX_CAPITAL_DEPLOYMENT
-        # Nifty lot size is 50. Floor division to get number of full lots
-        num_lots = int(max_investment / (self.entry_price * 50))
 
-        # User requested max 10 lots per trade limit to prevent overexposure
+        num_lots = int(max_investment / margin_per_lot)
         MAX_LOTS_PER_ORDER = 10
-
         num_lots = max(1, num_lots)
-        num_lots = min(num_lots, MAX_LOTS_PER_ORDER) # Cap at max allowed quantity
+        num_lots = min(num_lots, MAX_LOTS_PER_ORDER)
 
-        self.current_qty = num_lots * 50
+        self.current_qty = num_lots * LOT_SIZE
 
         self.entry_time = row.name
 
-        # Dynamic Risk/Reward Understanding
-        adx_value = row[f'ADX_{ADX_PERIOD}']
-        if adx_value >= 30:
-            # Very Strong trend identified: Widen risk tolerance and aim for max profitability
-            self.trade_sl_pct = 0.08      # 8% Stop Loss (give it room to breathe)
-            self.trade_target_pct = 0.20  # 20% Take Profit
-            self.trade_trailing_pct = 0.05 # 5% trailing (let winners run)
-        elif adx_value >= ADX_THRESHOLD:
-            # Moderate trend identified: Balanced scalping settings
-            self.trade_sl_pct = 0.05      # 5% Stop Loss (cut fast)
-            self.trade_target_pct = 0.10  # 10% Take Profit (1:2 Risk/Reward)
-            self.trade_trailing_pct = 0.03 # 3% tight trailing
-        else:
-            # Sideways/Choppy Market: Tight scalping settings
-            self.trade_sl_pct = 0.03      # 3% Stop Loss (cut instantly if range breaks)
-            self.trade_target_pct = 0.06  # 6% Take Profit (hit and run)
-            self.trade_trailing_pct = 0.02 # 2% ultra-tight trailing
+        self.trade_target_points = TARGET_POINTS
+        self.trade_sl_points = SL_POINTS
+        self.trade_trailing_points = TRAIL_POINTS
 
-        self.current_sl = self.entry_price * (1 - self.trade_sl_pct)
+        if opt_type == "CE":
+            self.initial_sl = self.entry_price - self.trade_sl_points
+        else:
+            self.initial_sl = self.entry_price + self.trade_sl_points
+
+        self.current_sl = self.initial_sl
         self.max_opt_price_seen = self.entry_price
+
         self.target_reached = False
         self.breakeven_reached = False
+
+        adx_value = row[f'ADX_{ADX_PERIOD}']
         self.is_sideways = True if adx_value < ADX_THRESHOLD else False
 
     def calculate_taxes_and_charges(self, entry_price, exit_price, qty):
@@ -267,32 +258,46 @@ class Backtester:
 
             # Manage open position
             if self.in_position:
-                # Mock price movement for the option based on cumulative underlying movement since entry
-                # In a real scenario, use actual option data. Here we assume a delta of 0.5
-                if self.position_type == "CE":
-                    opt_price_change = (row['close'] - self.underlying_entry_price) * 0.5
-                else: # PE
-                    opt_price_change = (self.underlying_entry_price - row['close']) * 0.5
+                current_fut_price = row['close']
 
-                current_opt_price = max(1.0, self.entry_price + opt_price_change) # options don't go below ~0
+                if self.position_type == "CE":
+                    points_gained = current_fut_price - self.entry_price
+                else:
+                    points_gained = self.entry_price - current_fut_price
 
                 # Floating PNL Kill Switch Check
-                floating_pnl = (current_opt_price - self.entry_price) * self.current_qty
+                if self.position_type == "CE":
+                    floating_pnl = (current_fut_price - self.entry_price) * self.current_qty
+                else:
+                    floating_pnl = (self.entry_price - current_fut_price) * self.current_qty
+
                 if (self.daily_pnl + floating_pnl) <= self.max_loss_limit:
                     self.kill_switch_active = True
-                    self._exit_trade(row, current_opt_price, "Kill Switch Hit")
+                    self._exit_trade(row, current_fut_price, "Kill Switch Hit")
                     continue
 
                 # Track max price seen for Trailing Take Profit
-                if current_opt_price > self.max_opt_price_seen:
-                    self.max_opt_price_seen = current_opt_price
+                if self.position_type == "CE":
+                    if current_fut_price > self.max_opt_price_seen:
+                        self.max_opt_price_seen = current_fut_price
+                else:
+                    # For shorts, "max price seen" means the lowest future price
+                    if current_fut_price < self.max_opt_price_seen:
+                        self.max_opt_price_seen = current_fut_price
 
                 # Check SL or Trailing Take Profit hit
-                if current_opt_price <= self.current_sl:
+                if self.position_type == "CE" and current_fut_price <= self.current_sl:
                     if self.target_reached:
                         reason = "Trailing Take Profit Hit (Target Reached)"
-                    elif self.breakeven_reached and self.current_sl > self.entry_price * 1.01:
-                        reason = "Step-Trailing SL Hit (Profit Locked)"
+                    elif self.breakeven_reached:
+                        reason = "Break Even Hit"
+                    else:
+                        reason = "Stop Loss Hit"
+                    self._exit_trade(row, self.current_sl, reason)
+                    continue
+                elif self.position_type == "PE" and current_fut_price >= self.current_sl:
+                    if self.target_reached:
+                        reason = "Trailing Take Profit Hit (Target Reached)"
                     elif self.breakeven_reached:
                         reason = "Break Even Hit"
                     else:
@@ -300,26 +305,39 @@ class Backtester:
                     self._exit_trade(row, self.current_sl, reason)
                     continue
 
-                profit_pct = (current_opt_price - self.entry_price) / self.entry_price
+                # Trailing Logic
+                # 1. Has Target Been Reached?
+                if points_gained >= self.trade_target_points:
+                    if not self.target_reached:
+                        self.target_reached = True
 
-                # 1. Target Reached -> Activate Trailing Take Profit
-                if profit_pct >= self.trade_target_pct:
-                    self.target_reached = True
-                    potential_new_sl = self.max_opt_price_seen * (1 - self.trade_trailing_pct)
-                    if potential_new_sl > self.current_sl:
-                        self.current_sl = potential_new_sl
+                    if self.position_type == "CE":
+                        new_sl = self.max_opt_price_seen - self.trade_trailing_points
+                        if new_sl > self.current_sl:
+                            self.current_sl = new_sl
+                    else:
+                        new_sl = self.max_opt_price_seen + self.trade_trailing_points
+                        if new_sl < self.current_sl:
+                            self.current_sl = new_sl
 
-                # 2. Break Even (1:1 RR) -> Move SL to entry
-                elif profit_pct >= self.trade_sl_pct and not self.target_reached and not self.breakeven_reached:
+                # 2. 1:1 Break Even Logic
+                elif points_gained >= self.trade_sl_points and not self.target_reached and not self.breakeven_reached:
                     self.breakeven_reached = True
-                    # Set SL to slightly above entry to cover minimum slippage/fees
-                    self.current_sl = self.entry_price * 1.01
+                    if self.position_type == "CE":
+                        self.current_sl = self.entry_price + (TICK_SIZE * 5)
+                    else:
+                        self.current_sl = self.entry_price - (TICK_SIZE * 5)
 
-                # 3. Continuous Step Trailing (Between Break-Even and Target)
+                # 3. Continuous Step Trailing (Locking in profit between Break-Even and Target)
                 elif self.breakeven_reached and not self.target_reached:
-                    potential_new_sl = self.max_opt_price_seen * (1 - self.trade_trailing_pct)
-                    if potential_new_sl > self.current_sl:
-                        self.current_sl = potential_new_sl
+                     if self.position_type == "CE":
+                         new_sl = self.max_opt_price_seen - self.trade_trailing_points
+                         if new_sl > self.current_sl:
+                             self.current_sl = new_sl
+                     else:
+                         new_sl = self.max_opt_price_seen + self.trade_trailing_points
+                         if new_sl < self.current_sl:
+                             self.current_sl = new_sl
 
             # Look for entries if not in position
             else:

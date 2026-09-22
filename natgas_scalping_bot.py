@@ -397,31 +397,29 @@ class ScalpingStrategy:
 
     def execute_trade(self, opt_type, spot_price, adx_value):
         """Executes the entry order and sets dynamic initial SL."""
-        strike = self.get_atm_strike(spot_price)
-        self.option_symbol, dynamic_lot_size = self.get_option_symbol(strike, opt_type)
+        self.option_symbol = self.broker.get_current_future_symbol(SYMBOL)
 
-        if not self.option_symbol or not dynamic_lot_size:
-            logger.error("Trade Aborted: Could not determine valid option symbol or lot size from broker.")
+        if not self.option_symbol:
+            logger.error("Trade Aborted: Could not determine valid futures contract from broker.")
             return
 
-        # Dynamic Quantity Calculation based on Live Balance (Max 10 Lots)
+        dynamic_lot_size = LOT_SIZE
+
+        # For commodities futures, margin is ~15% of total contract value
         live_balance = self.broker.get_balance()
-        # Use 95% of available capital
         max_investment = live_balance * 0.95
 
-        # Estimate premium using ~0.5 delta assumption for ATM (just for initial sizing if fetching fails)
-        estimated_premium = (spot_price * 0.005)
+        estimated_margin_per_lot = (spot_price * dynamic_lot_size) * 0.15
 
-        # Try to get the actual live premium first to size perfectly
         try:
-            live_premium = self.broker.get_ltp(self.option_symbol)
-            if live_premium > 0:
-                estimated_premium = live_premium
+            live_price = self.broker.get_ltp(self.option_symbol)
+            if live_price > 0:
+                estimated_margin_per_lot = (live_price * dynamic_lot_size) * 0.15
         except Exception:
             pass
 
-        calculated_lots = int(max_investment / (estimated_premium * dynamic_lot_size))
-        calculated_lots = min(calculated_lots, 10) # Cap at 10 lots max
+        calculated_lots = int(max_investment / estimated_margin_per_lot)
+        calculated_lots = max(1, min(calculated_lots, 10)) # Cap at 10 lots max
 
         if calculated_lots <= 0:
             logger.error(f"Trade Aborted: Insufficient funds to buy even 1 lot. Balance: {live_balance}")
@@ -429,8 +427,11 @@ class ScalpingStrategy:
 
         trade_qty = calculated_lots * dynamic_lot_size
 
+        # For Futures, CE = Long (BUY), PE = Short (SELL)
+        entry_side = "BUY" if opt_type == "CE" else "SELL"
+
         # Place Market Order
-        order_id = self.broker.place_order(self.option_symbol, "BUY", trade_qty)
+        order_id = self.broker.place_order(self.option_symbol, entry_side, trade_qty)
 
         if not order_id:
             logger.error("Trade Aborted: Order placement failed via broker API.")
@@ -445,33 +446,22 @@ class ScalpingStrategy:
             # Fetch Entry Price
             self.entry_price = self.broker.get_ltp(self.option_symbol)
         except Exception as e:
-            logger.error(f"Failed to fetch exact entry price after fill - {e}. Falling back to estimated premium.")
-            # DO NOT ABORT OR SET IN_POSITION TO FALSE! We already bought it!
-            self.entry_price = estimated_premium
+            logger.error(f"Failed to fetch exact entry price after fill - {e}. Falling back to spot price.")
+            self.entry_price = spot_price
 
-        # Dynamic Risk Allocation based on trend strength
-        if adx_value >= 30:
-            self.trade_sl_pct = 0.08
-            self.trade_target_pct = 0.20
-            self.trade_trailing_pct = 0.1
-            logger.info("Very Strong Trend Detected. Engaging Max Profitability settings.")
-        elif adx_value >= ADX_THRESHOLD:
-            self.trade_sl_pct = 0.1
-            self.trade_target_pct = 0.10
-            self.trade_trailing_pct = 0.03
-            logger.info("Moderate Trend Detected. Engaging Balanced Scalp settings.")
-        else:
-            self.trade_sl_pct = 0.03
-            self.trade_target_pct = 0.06
-            self.trade_trailing_pct = 0.02
-            logger.info("Sideways Chop Detected. Engaging tight hit-and-run scalping parameters.")
+        # Fixed point-based allocation (for commodities)
+        self.trade_target_points = TARGET_POINTS
+        self.trade_sl_points = SL_POINTS
+        self.trade_trailing_points = TRAIL_POINTS
+
+        logger.info(f"Using fixed Point-Based settings for {SYMBOL}: Target {TARGET_POINTS}pts, SL {SL_POINTS}pts, Trail {TRAIL_POINTS}pts.")
 
         # Calculate & System Place SL
-        self.current_sl = self.risk_manager.calculate_sl(self.entry_price, self.trade_sl_pct)
-        # In reality, place a Stop Loss Market (SL-M) order here with the broker
+        if opt_type == "CE":
+            self.current_sl = self.entry_price - self.trade_sl_points
+        else:
+            self.current_sl = self.entry_price + self.trade_sl_points
 
-        self.in_position = True
-        self.current_position = opt_type
         self.max_opt_price_seen = self.entry_price
         self.target_reached = False
         self.breakeven_reached = False
