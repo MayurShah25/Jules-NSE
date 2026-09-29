@@ -382,7 +382,8 @@ class Backtester:
         logger.info("\n================= BACKTEST SUMMARY =================")
         logger.info(f"Initial Capital: {self.starting_capital:.2f}")
         logger.info(f"Final Capital:   {self.capital:.2f}")
-        logger.info(f"Net PnL:         {self.capital - self.starting_capital:.2f}")
+        net_overall = self.capital - self.starting_capital
+        logger.info(f"Net PnL:         \033[{'32m' if net_overall > 0 else '31m'}{net_overall:.2f}\033[0m")
 
         if not df_trades.empty:
             logger.info("\n--- DETAILED TRADE LOG ---")
@@ -394,7 +395,7 @@ class Backtester:
                             f"Entry: {entry_time_str} @ ₹{trade['Entry_Price']:.2f} | "
                             f"Exit: {exit_time_str} @ ₹{trade['Exit_Price']:.2f} | "
                             f"Reason: {trade['Reason']} | "
-                            f"Net PnL: ₹{trade['Net_PnL']:.2f}")
+                            f"Net PnL: \033[{'32m' if trade['Net_PnL'] > 0 else '31m'}₹{trade['Net_PnL']:.2f}\033[0m")
             logger.info("--------------------------\n")
 
             winning_trades = df_trades[df_trades['Net_PnL'] > 0]
@@ -402,7 +403,7 @@ class Backtester:
             gross_pnl_sum = df_trades['Gross_PnL'].sum()
             logger.info(f"Total Trades:    {len(df_trades)}")
             logger.info(f"Win Rate:        {(len(winning_trades) / len(df_trades)) * 100:.2f}%")
-            logger.info(f"Gross PnL:       {gross_pnl_sum:.2f}")
+            logger.info(f"Gross PnL:       \033[{'32m' if gross_pnl_sum > 0 else '31m'}{gross_pnl_sum:.2f}\033[0m")
             logger.info(f"Total Taxes:     {total_taxes:.2f}")
         else:
             logger.info("No trades executed.")

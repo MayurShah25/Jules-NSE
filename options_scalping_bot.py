@@ -535,7 +535,9 @@ class ScalpingStrategy:
         self.daily_realized_pnl += realized_pnl
 
         logger.info(f"Exited position {self.current_position} at {exit_price:.2f}. Reason: {reason}")
-        logger.info(f"Trade PNL: ₹{realized_pnl:.2f} | Total Daily PNL: ₹{self.daily_realized_pnl:.2f}")
+        trade_pnl_str = f"\033[32m₹{realized_pnl:.2f}\033[0m" if realized_pnl > 0 else f"\033[31m₹{realized_pnl:.2f}\033[0m"
+        daily_pnl_str = f"\033[32m₹{self.daily_realized_pnl:.2f}\033[0m" if self.daily_realized_pnl > 0 else f"\033[31m₹{self.daily_realized_pnl:.2f}\033[0m"
+        logger.info(f"Trade PNL: {trade_pnl_str} | Total Daily PNL: {daily_pnl_str}")
 
         self.in_position = False
         self.current_position = None
@@ -559,7 +561,8 @@ class ScalpingStrategy:
         # Live PNL Logging
         now = datetime.now()
         if (now - self.last_pnl_heartbeat_time).total_seconds() >= 30: # Log every 30 seconds
-            logger.info(f"[LIVE PNL] {self.option_symbol} | LTP: {current_opt_price:.2f} | PNL: ₹{current_floating_pnl:.2f} | SL: {self.current_sl:.2f}")
+            live_pnl_str = f"\033[32m₹{current_floating_pnl:.2f}\033[0m" if current_floating_pnl > 0 else f"\033[31m₹{current_floating_pnl:.2f}\033[0m"
+            logger.info(f"[LIVE PNL] {self.option_symbol} | LTP: {current_opt_price:.2f} | PNL: {live_pnl_str} | SL: {self.current_sl:.2f}")
             self.last_pnl_heartbeat_time = now
 
         # 0. Floating Kill Switch Hit
@@ -759,7 +762,8 @@ if __name__ == "__main__":
                 if now > datetime.strptime("15:30", "%H:%M").time():
                     logger.info("Market Closed for the day. Exiting.")
                     logger.info(f"===================================")
-                    logger.info(f"FINAL DAILY PNL: ₹{bot.daily_realized_pnl:.2f}")
+                    final_pnl_str = f"\033[32m₹{bot.daily_realized_pnl:.2f}\033[0m" if bot.daily_realized_pnl > 0 else f"\033[31m₹{bot.daily_realized_pnl:.2f}\033[0m"
+                    logger.info(f"FINAL DAILY PNL: {final_pnl_str}")
                     logger.info(f"===================================")
                     break
 
@@ -771,5 +775,6 @@ if __name__ == "__main__":
         if bot.in_position:
             bot.exit_trade("Manual Stop")
         logger.info(f"===================================")
-        logger.info(f"FINAL DAILY PNL: ₹{bot.daily_realized_pnl:.2f}")
+        final_pnl_str = f"\033[32m₹{bot.daily_realized_pnl:.2f}\033[0m" if bot.daily_realized_pnl > 0 else f"\033[31m₹{bot.daily_realized_pnl:.2f}\033[0m"
+        logger.info(f"FINAL DAILY PNL: {final_pnl_str}")
         logger.info(f"===================================")
