@@ -158,17 +158,6 @@ class BrokerAPI:
             # Raise the exception so the trade loop can abort instead of proceeding with fake data
             raise e
 
-
-            # Sort by expiry date and get the closest one
-            valid_options.sort(key=lambda x: x['expiry'])
-            best_option = valid_options[0]
-
-            return best_option['tradingsymbol'], best_option['lot_size']
-
-        except Exception as e:
-            logger.warning(f"Failed to fetch option symbol: {e}")
-            return None, None
-
     def place_order(self, symbol, side, qty, order_type="MARKET", price=0.0):
         if PAPER_TRADING:
             logger.warning(f"[PAPER TRADE] {side} {qty} {symbol} @ {order_type}")
@@ -436,6 +425,23 @@ class ScalpingStrategy:
         if not order_id:
             logger.error("Trade Aborted: Order placement failed via broker API.")
             return
+
+        # Verify the order actually executed successfully before declaring in position
+        # A simple check for paper trading, but for live trading we should ideally verify position status
+        if not PAPER_TRADING and order_id:
+            try:
+                # Wait for the order to be processed by the broker
+                time.sleep(1)
+                orders = self.broker.kite.orders()
+                order_details = next((o for o in orders if o['order_id'] == order_id), None)
+                if order_details and order_details['status'] != 'COMPLETE':
+                    logger.error(f"Trade Aborted: Buy order {order_id} is not complete (Status: {order_details['status']}).")
+                    # If it's a limit order that didn't fill, we should probably cancel it
+                    if order_details['status'] == 'OPEN':
+                         self.broker.kite.cancel_order(variety=self.broker.kite.VARIETY_REGULAR, order_id=order_id)
+                    return
+            except Exception as e:
+                logger.warning(f"Could not verify order status for {order_id}: {e}")
 
         # WE ARE NOW IN A LIVE POSITION
         self.in_position = True

@@ -20,10 +20,6 @@ pkill -f "options_scalping_bot.py" || true
 pkill -f "banknifty_scalping_bot.py" || true
 pkill -f "crude_scalping_bot.py" || true
 pkill -f "natgas_scalping_bot.py" || true
-pkill -f "crude_scalping_bot.py" || true
-pkill -f "natgas_scalping_bot.py" || true
-pkill -f "crude_scalping_bot.py" || true
-pkill -f "natgas_scalping_bot.py" || true
 sleep 2
 
 # Run the python script securely in the background using nohup

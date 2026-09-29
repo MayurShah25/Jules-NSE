@@ -471,6 +471,23 @@ class ScalpingStrategy:
             logger.error("Trade Aborted: Order placement failed via broker API.")
             return
 
+        # Verify the order actually executed successfully before declaring in position
+        # A simple check for paper trading, but for live trading we should ideally verify position status
+        if not PAPER_TRADING and order_id:
+            try:
+                # Wait for the order to be processed by the broker
+                time.sleep(1)
+                orders = self.broker.kite.orders()
+                order_details = next((o for o in orders if o['order_id'] == order_id), None)
+                if order_details and order_details['status'] != 'COMPLETE':
+                    logger.error(f"Trade Aborted: Buy order {order_id} is not complete (Status: {order_details['status']}).")
+                    # If it's a limit order that didn't fill, we should probably cancel it
+                    if order_details['status'] == 'OPEN':
+                         self.broker.kite.cancel_order(variety=self.broker.kite.VARIETY_REGULAR, order_id=order_id)
+                    return
+            except Exception as e:
+                logger.warning(f"Could not verify order status for {order_id}: {e}")
+
         # WE ARE NOW IN A LIVE POSITION
         self.in_position = True
         self.current_position = opt_type
@@ -486,19 +503,19 @@ class ScalpingStrategy:
 
         # Dynamic Risk Allocation based on trend strength
         if adx_value >= 30:
+            self.trade_sl_pct = 0.12
+            self.trade_target_pct = 0.30
+            self.trade_trailing_pct = 0.08
+            logger.info("Very Strong Trend Detected. Engaging Max Profitability settings.")
+        elif adx_value >= ADX_THRESHOLD:
             self.trade_sl_pct = 0.08
             self.trade_target_pct = 0.20
             self.trade_trailing_pct = 0.05
-            logger.info("Very Strong Trend Detected. Engaging Max Profitability settings.")
-        elif adx_value >= ADX_THRESHOLD:
+            logger.info("Moderate Trend Detected. Engaging Balanced Scalp settings.")
+        else:
             self.trade_sl_pct = 0.05
             self.trade_target_pct = 0.10
             self.trade_trailing_pct = 0.03
-            logger.info("Moderate Trend Detected. Engaging Balanced Scalp settings.")
-        else:
-            self.trade_sl_pct = 0.03
-            self.trade_target_pct = 0.06
-            self.trade_trailing_pct = 0.02
             logger.info("Sideways Chop Detected. Engaging tight hit-and-run scalping parameters.")
 
         # Calculate & System Place SL
@@ -588,11 +605,11 @@ class ScalpingStrategy:
                 self.current_sl = new_sl
                 # In reality, modify the pending SL-M order with the broker here
 
-        # 3. Update to Break Even (1:1 RR Reached)
-        elif profit_pct >= self.trade_sl_pct and not self.target_reached and not self.breakeven_reached:
+        # 3. Update to Break Even (1.5:1 RR Reached)
+        elif profit_pct >= (self.trade_sl_pct * 1.5) and not self.target_reached and not self.breakeven_reached:
             self.breakeven_reached = True
             new_sl = self.entry_price * 1.01 # Slightly above entry to cover fees
-            logger.info(f"1:1 R:R Reached. Moving SL to Break Even: {new_sl:.2f}")
+            logger.info(f"1.5:1 R:R Reached. Moving SL to Break Even: {new_sl:.2f}")
             self.current_sl = new_sl
             # In reality, modify the pending SL-M order with the broker here
 

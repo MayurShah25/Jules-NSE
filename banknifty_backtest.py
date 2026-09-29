@@ -147,19 +147,19 @@ class Backtester:
         adx_value = row[f'ADX_{ADX_PERIOD}']
         if adx_value >= 30:
             # Very Strong trend identified: Widen risk tolerance and aim for max profitability
-            self.trade_sl_pct = 0.08      # 8% Stop Loss (give it room to breathe)
-            self.trade_target_pct = 0.20  # 20% Take Profit
-            self.trade_trailing_pct = 0.05 # 5% trailing (let winners run)
+            self.trade_sl_pct = 0.12      # 12% Stop Loss (give it room to breathe)
+            self.trade_target_pct = 0.30  # 30% Take Profit
+            self.trade_trailing_pct = 0.08 # 8% trailing (let winners run)
         elif adx_value >= ADX_THRESHOLD:
             # Moderate trend identified: Balanced scalping settings
-            self.trade_sl_pct = 0.05      # 5% Stop Loss (cut fast)
-            self.trade_target_pct = 0.10  # 10% Take Profit (1:2 Risk/Reward)
-            self.trade_trailing_pct = 0.03 # 3% tight trailing
+            self.trade_sl_pct = 0.08      # 8% Stop Loss (cut fast)
+            self.trade_target_pct = 0.20  # 20% Take Profit (1:2.5 Risk/Reward)
+            self.trade_trailing_pct = 0.05 # 5% tight trailing
         else:
             # Sideways/Choppy Market: Tight scalping settings
-            self.trade_sl_pct = 0.03      # 3% Stop Loss (cut instantly if range breaks)
-            self.trade_target_pct = 0.06  # 6% Take Profit (hit and run)
-            self.trade_trailing_pct = 0.02 # 2% ultra-tight trailing
+            self.trade_sl_pct = 0.05      # 5% Stop Loss (cut instantly if range breaks)
+            self.trade_target_pct = 0.10  # 10% Take Profit (hit and run)
+            self.trade_trailing_pct = 0.03 # 3% ultra-tight trailing
 
         self.current_sl = self.entry_price * (1 - self.trade_sl_pct)
         self.max_opt_price_seen = self.entry_price
@@ -319,8 +319,8 @@ class Backtester:
                     if potential_new_sl > self.current_sl:
                         self.current_sl = potential_new_sl
 
-                # 2. Break Even (1:1 RR) -> Move SL to entry
-                elif profit_pct >= self.trade_sl_pct and not self.target_reached and not self.breakeven_reached:
+                # 2. Break Even (1.5:1 RR) -> Move SL to entry
+                elif profit_pct >= (self.trade_sl_pct * 1.5) and not self.target_reached and not self.breakeven_reached:
                     self.breakeven_reached = True
                     # Set SL to slightly above entry to cover minimum slippage/fees
                     self.current_sl = self.entry_price * 1.01

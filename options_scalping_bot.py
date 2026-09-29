@@ -460,6 +460,23 @@ class ScalpingStrategy:
             logger.error("Trade Aborted: Order placement failed via broker API.")
             return
 
+        # Verify the order actually executed successfully before declaring in position
+        # A simple check for paper trading, but for live trading we should ideally verify position status
+        if not PAPER_TRADING and order_id:
+            try:
+                # Wait for the order to be processed by the broker
+                time.sleep(1)
+                orders = self.broker.kite.orders()
+                order_details = next((o for o in orders if o['order_id'] == order_id), None)
+                if order_details and order_details['status'] != 'COMPLETE':
+                    logger.error(f"Trade Aborted: Buy order {order_id} is not complete (Status: {order_details['status']}).")
+                    # If it's a limit order that didn't fill, we should probably cancel it
+                    if order_details['status'] == 'OPEN':
+                         self.broker.kite.cancel_order(variety=self.broker.kite.VARIETY_REGULAR, order_id=order_id)
+                    return
+            except Exception as e:
+                logger.warning(f"Could not verify order status for {order_id}: {e}")
+
         # WE ARE NOW IN A LIVE POSITION
         self.in_position = True
         self.current_position = opt_type
