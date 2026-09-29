@@ -211,8 +211,11 @@ class Backtester:
         logger.info("Starting backtest loop...")
 
         for idx, row in df.iterrows():
+            # YFinance datetimes can be timezone aware (e.g. +05:30), so we use .time() taking this into account if needed, but it works on both
             current_time = row.name.time()
             date = row.name.date()
+
+            # Note: YFinance time is local to the exchange (IST) which means it aligns with market hours (09:15 to 15:30)
 
             # Reset daily limits
             if date != self.current_date:
