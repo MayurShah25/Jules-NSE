@@ -67,11 +67,19 @@ pip install pandas numpy ta kiteconnect yfinance flask
 ```
 
 ### Step 6: The Daily Morning Routine (Automated Sync)
-Because Zerodha enforces strict validation rules that prevent redirecting directly to AWS Public IPs, we use a highly secure "Local Sync" method.
+Because Zerodha enforces strict validation rules that prevent redirecting directly to AWS Public IPs, we use a highly secure "Local Sync" method. The scripts provided below will locally generate your `access_token.txt`, automatically push it securely to AWS via SSH (`scp`), and trigger the bots to start on the remote server.
 
 1. Ensure your Zerodha Redirect URL is set to `http://127.0.0.1:8000`.
-2. Every morning around 8:45 AM, open **PowerShell** on your local Windows computer.
-3. Run the automated deployment script by temporarily bypassing Windows execution policy blocks:
+2. Every morning around 8:45 AM, execute the deployment script for your specific OS. Ensure your `trading-key.pem` is located in the same directory.
+
+**For Mac/Linux:**
+Open your terminal and run:
+```bash
+./deploy_to_aws.sh
+```
+
+**For Windows:**
+Open PowerShell and temporarily bypass Windows execution policy blocks to run the script:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\deploy_to_aws.ps1
 ```
@@ -80,6 +88,6 @@ powershell -ExecutionPolicy Bypass -File .\deploy_to_aws.ps1
 1. Opens your local browser to log into Zerodha.
 2. Generates the `access_token.txt` locally.
 3. Asks for your AWS Public IP, then securely uploads the token to your server via SSH.
-4. Tells the AWS server to quietly launch both the Nifty and BankNifty trading bots in the background.
+4. Tells the AWS server to quietly launch the entire trading suite (Nifty, BankNifty, Crude Oil, Natural Gas) in the background.
 
-You can safely close the PowerShell window! If you want to check on the bots later, simply SSH into your AWS server and type `cat nifty_bot.log` or `cat banknifty_bot.log`.
+You can safely close the window once it completes! If you want to check on the bots later, simply SSH into your AWS server and type `cat nifty_bot.log` or `cat banknifty_bot.log`.
