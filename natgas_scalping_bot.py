@@ -300,11 +300,19 @@ class ScalpingStrategy:
         """Fetches data and calculates Rolling High/Low, VWAP, EMA, ADX."""
         # Rate Limiting: Only fetch historical data once every 60 seconds
         now = datetime.now()
+
+        # Ensure we have the tradable symbol initialized for LTP queries
+        if not self.option_symbol:
+            self.option_symbol = self.broker.get_current_future_symbol(SYMBOL)
+            if not self.option_symbol:
+                 logger.error(f"Could not resolve front-month contract for {SYMBOL}")
+                 return None
+
         if self.last_fetch_time and (now - self.last_fetch_time).total_seconds() < 60:
             if self.cached_market_data:
                 try:
                     # Update only the current close price (LTP) for precise breakout detection
-                    self.cached_market_data['close'] = self.broker.get_ltp(SYMBOL)
+                    self.cached_market_data['close'] = self.broker.get_ltp(self.option_symbol)
                 except Exception as e:
                     logger.warning(f"Error updating live index price: {e}")
                 return self.cached_market_data
